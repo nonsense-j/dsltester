@@ -1,0 +1,20 @@
+# pycache
+__pycache__/
+/.venv/
+/.vscode/
+
+# kirin_ws & data
+/kirin_ws
+/data
+
+# config
+src/utils/config.py
+
+# llm
+src/utils/_llm.py
+
+# jupyter notebook
+*.ipynb
+
+# reference code and data
+/refs

@@ -1,0 +1,9 @@
+openai
+antlr4-python3-runtime
+tree_sitter
+tree-sitter-java
+
+# jupyter notebook
+tqdm
+pandas
+notebook
