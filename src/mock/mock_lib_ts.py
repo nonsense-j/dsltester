@@ -53,6 +53,7 @@ class JavaDependencyParser:
         self.JAVA_LANGUAGE = Language(tsjava.language())
         self.parser = Parser(self.JAVA_LANGUAGE)
 
+        self.inner_class_types = set()  # only single file: inner class types
         self.scoped_class_info = {}  # only single file: Cls -> x.y.z.Cls
         self.method_decl_map = {}  # only single file: method_name -> ([arg1_type, arg2_type, ...], ret_type)
         self.type_info = {}  # only single file: x -> String
@@ -67,9 +68,13 @@ class JavaDependencyParser:
         tree = self.parser.parse(source_code)
 
         # clear previous data
+        self.inner_class_types.clear()
         self.scoped_class_info.clear()
         self.type_info.clear()
         self.method_decl_map.clear()
+
+        # Extract inner class types to self.inner_class_types
+        self._extract_inner_class_types(tree.root_node)
 
         # Extract imports to self.scoped_class_info
         self._extract_imports(tree.root_node)
@@ -144,6 +149,23 @@ class JavaDependencyParser:
             res[class_fqn] = lib_code
         return res
 
+    def _extract_inner_class_types(self, root_node):
+        """Extract all inner class types from the AST."""
+        # inner class types
+        inner_class_query = self.JAVA_LANGUAGE.query(
+            """
+            (class_declaration
+            (identifier) @inner_class_type
+            )
+        """
+        )
+        captures = inner_class_query.captures(root_node)
+        for node in captures.get("inner_class_type", []):
+            class_name = node.text.decode("utf-8")
+            if class_name in self.inner_class_types:
+                continue
+            self.inner_class_types.add(class_name)
+
     def _extract_imports(self, root_node):
         """Extract all third-party scope classes from the AST."""
         # import classes
@@ -172,7 +194,6 @@ class JavaDependencyParser:
         captures = scoped_type_query.captures(root_node)
         for node in captures.get("scoped_class_type", []):
             class_fqn = node.text.decode("utf-8")
-            scoped_type_query.append(node.text.decode("utf-8"))
             if class_fqn in self.scoped_class_info:
                 continue
             self.scoped_class_info[class_fqn] = class_fqn
@@ -238,6 +259,9 @@ class JavaDependencyParser:
                 # if the arg_type is a class, use the full name
                 if arg_type in self.scoped_class_info:
                     arg_type = self.scoped_class_info[arg_type]
+                if arg_type in self.inner_class_types:
+                    # inner class types should be set to Object
+                    arg_type = "Object"
                 arg_type_list.append(arg_type)
 
             constructor_sig = ConstructorSignature(arg_type_list=arg_type_list)
@@ -317,7 +341,11 @@ class JavaDependencyParser:
             else:
                 return "double"
 
-        return None
+        # class_literal
+        if type_ == "class_literal":
+            return "Class"
+
+        raise ValueError(f"Unsupported built-in type '{type_}'")
 
     def _get_arg_type(self, node):
         type_ = node.type
@@ -373,6 +401,9 @@ class JavaDependencyParser:
         # if the method_type is a class, use the full name
         if method_type in self.scoped_class_info:
             method_type = self.scoped_class_info[method_type]
+        # if the method_type is an inner class, set it to Object
+        if method_type in self.inner_class_types:
+            method_type = "Object"
 
         # argument signature
         arg_type_list = []
@@ -382,6 +413,9 @@ class JavaDependencyParser:
             # if the arg_type is a class, use the full name
             if arg_type in self.scoped_class_info:
                 arg_type = self.scoped_class_info[arg_type]
+            if arg_type in self.inner_class_types:
+                # inner class types should be set to Object
+                arg_type = "Object"
             arg_type_list.append(arg_type)
 
         method_sig = MethodSignature(
@@ -406,6 +440,9 @@ class JavaDependencyParser:
         # if the field_type is a class, use the full name
         if field_type in self.scoped_class_info:
             field_type = self.scoped_class_info[field_type]
+        # if the field_type is an inner class, set it to Object
+        if field_type in self.inner_class_types:
+            field_type = "Object"
         # construct field signature
         return FieldSignature(
             is_static=is_static,

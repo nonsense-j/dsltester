@@ -148,7 +148,7 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path) -> None:
 
     for i, node_dsl in enumerate(dsl_prep_res["node_dsl_list"]):
         i += 1
-        node_dsl_path = dsl_dir / f"dsl_n{i}.kirin"
+        node_dsl_path = dsl_dir / f"DSL_N{i}.kirin"
         node_dsl_path.write_text(node_dsl, encoding="utf-8")
 
     for i, sub_dsl_list in enumerate(dsl_prep_res["sub_dsl_collection"]):
@@ -157,7 +157,7 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path) -> None:
         sub_dsl_dir.mkdir(parents=True, exist_ok=True)
         for j, sub_dsl in enumerate(sub_dsl_list):
             j += 1
-            sub_dsl_path = sub_dsl_dir / f"dsl_n{i}_s{j}.kirin"
+            sub_dsl_path = sub_dsl_dir / f"DSL_N{i}_S{j}.kirin"
             sub_dsl_path.write_text(sub_dsl, encoding="utf-8")
 
     logger.info(f"==> DSL preprocess result saved to {dsl_dir}")

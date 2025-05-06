@@ -27,7 +27,7 @@ def install_lib_code(mock_lib_code_res: dict[str, str], install_dir: Path) -> bo
 
     # install the mock lib code to the install_dir
     for class_fqn, lib_code in mock_lib_code_res.items():
-        class_rel_path = f"{class_fqn.replace(".", "/")}.java"
+        class_rel_path = f"{class_fqn.replace('.', '/')}.java"
         lib_file_path = install_dir / class_rel_path
         # create directory structure
         lib_file_path.parent.mkdir(parents=True, exist_ok=True)

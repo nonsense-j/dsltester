@@ -19,10 +19,11 @@ class TestInfoDict(TypedDict):
 class DslPrepResDict(TypedDict):
     node_dsl_list: List[str]
     sub_dsl_collection: List[List[str]]
-    
+
+
 class DslValResDict(TypedDict):
-    reported: dict[str, list[int]]   # {file_name: [report_line, ...]}
-    passed: list[str]   # [file_name, ...]
+    reported: dict[str, list[int]]  # {file_name: [report_line, ...]}
+    passed: list[str]  # [file_name, ...]
 
 
 """

@@ -66,7 +66,7 @@ def parse_xml_results(dsl_id) -> dict[str, DslValResDict]:
 
         # add info: {file_name: [report_line, ...]}
         if file_name not in result[checker_name]["report"]:
-            result[checker_name]["report"][file_name] = []
+            result[checker_name]["report"][file_name] = [report_line]
         else:
             result[checker_name]["report"][file_name].append(report_line)
 
@@ -74,7 +74,7 @@ def parse_xml_results(dsl_id) -> dict[str, DslValResDict]:
     for checker_name in result:
         reported_files = list(result[checker_name]["report"].keys())
         pass_files = [f for f in scan_files if f not in reported_files]
-        result[checker_name]["pass"] = pass_files
+        result[checker_name]["pass"] = sorted(pass_files)
 
     # checkers not reported in the XML file
     checker_dir = Path(f"kirin_ws/{dsl_id}/dsl")
@@ -84,14 +84,14 @@ def parse_xml_results(dsl_id) -> dict[str, DslValResDict]:
     for checker_file in checker_list:
         checker_name = checker_file.stem
         if checker_name not in result:
-            result[checker_name] = {"report": dict(), "pass": scan_files}
+            result[checker_name] = {"report": dict(), "pass": sorted(list(scan_files))}
 
     # log output
     sorted_keys = sorted(list(result.keys()), key=lambda x: (len(x), x))
     res_str = ""
     for checker_name in sorted_keys:
         res_str += f"=> Checker: {checker_name}\n"
-        res_str += f"\treprted: {', '.join(result[checker_name]['report'].keys())}\n"
+        res_str += f"\treprted: {', '.join(sorted(result[checker_name]['report'].keys()))}\n"
         res_str += f"\tpassed: {', '.join(result[checker_name]['pass'])}\n\n"
     logger.info(f"==> Validation Result:\n{res_str}")
 

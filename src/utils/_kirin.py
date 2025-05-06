@@ -102,7 +102,7 @@ class KirinRunner:
 
         finally:
             # delete the kirin logs
-            del_kirin_logs(report_dir)
+            del_kirin_logs(dsl_dir)
 
     @classmethod
     def format_dsl_file(cls, input_path: Path, do_replace=True) -> str:
