@@ -126,25 +126,24 @@ def create_test_info(test_case_list: list[str]) -> TestInfoDict:
     )
     for test_case in test_case_list:
         class_name = extract_main_class(test_case)
-        if "positive" in class_name:
+        if "positive" in class_name.lower():
             i = len(test_info["positive"]) + 1
             expected_class_name = f"PositiveTest{i}"
             if class_name != expected_class_name:
                 test_case = update_main_class(test_case, expected_class_name)
-            test_info["positive"].append(test_case)
-        elif "negative" in test_case:
+            test_info["positive"].append((expected_class_name, test_case))
+        elif "negative" in test_case.lower():
             i = len(test_info["negative"]) + 1
             expected_class_name = f"NegativeTest{i}"
             if class_name != expected_class_name:
                 test_case = update_main_class(test_case, expected_class_name)
-            test_info["negative"].append(test_case)
-
+            test_info["negative"].append((expected_class_name, test_case))
         else:
             i = len(test_info["unknown"]) + 1
             expected_class_name = f"UnknownTest{i}"
             if class_name != expected_class_name:
                 test_case = update_main_class(test_case, expected_class_name)
-            test_info["unknown"].append(test_case)
+            test_info["unknown"].append((expected_class_name, test_case))
     return test_info
 
 
@@ -193,18 +192,18 @@ def validate_syntax(java_code_list: list[str]) -> list[bool]:
 if __name__ == "__main__":
     code_list = [
         """
-        public class Test {
+        public class PositiveTest {
             public static void main(String[] args) {
                 System.out.println("Hello, World!");
             }
         }
         """,
         """
-        public class Test {
+        public class Positivetest {
             public static void main(String[] args) {
                 System.out.println("Hello, World);
             }
         }
         """,
     ]
-    print(validate_syntax(code_list))
+    print(create_test_info(code_list))

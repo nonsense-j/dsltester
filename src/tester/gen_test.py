@@ -136,11 +136,12 @@ def save_test_info(test_info: TestInfoDict, test_dir: Path) -> None:
     """
     if not test_dir.is_dir():
         raise ValueError(f"--> Test directory {test_dir} not found!")
-    create_dir_with_path(test_dir, clean=True)
+    create_dir_with_path(test_dir, cleanup=True)
 
     for label, sub_test_info in test_info.items():
         logger.info(f"Saving {len(sub_test_info)} {label} test cases...")
-        for file_stem, test_case_code in sub_test_info:
+        for single_test_info in sub_test_info:
+            file_stem, test_case_code = single_test_info
             test_case_path = test_dir / f"{file_stem}.java"
             test_case_path.write_text(test_case_code, encoding="utf-8")
 

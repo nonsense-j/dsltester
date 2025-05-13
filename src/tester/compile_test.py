@@ -29,7 +29,7 @@ class TestCompiler:
         self.test_dir = self.dsl_ws_dir / "test"
         assert self.test_dir.is_dir(), f"--> Test dirpath {self.test_dir} does not exists!"
 
-        self.test_filepaths_str: list[str] = [test_file for test_file in self.test_dir.rglob("*.java")]
+        self.test_filepaths_str: list[str] = [str(test_file) for test_file in self.test_dir.rglob("*.java")]
         if len(self.test_filepaths_str) == 0:
             logger.error(f"--> No test cases are found in {self.test_dir}!")
             raise AssertionError(f"--> No test cases are found in {self.test_dir}!")
@@ -61,8 +61,10 @@ class TestCompiler:
         self.lib_dir.mkdir(parents=True, exist_ok=True)
         try:
             # compile
+            lib_filepaths = list(self.mock_tmp_dir.rglob("*.java"))
+            lib_filepaths_str = [str(lib_file) for lib_file in lib_filepaths]
             javac_res = subprocess.run(
-                [self.javac_executable, "-encoding", "utf-8" "-d", str(self.mock_tmp_dir)] + self.test_filepaths_str,
+                [self.javac_executable, "-encoding", "utf-8", "-d", str(self.mock_tmp_dir)] + lib_filepaths_str,
                 capture_output=True,
                 text=True,
                 check=True,
@@ -96,8 +98,8 @@ class TestCompiler:
         create_dir_with_path(self.target_dir, cleanup=True)
         try:
             cmd_list = [self.javac_executable, "-encoding", "utf-8", "-d", str(self.target_dir)]
-            # if self.lib_dir.is_dir():
-            #     cmd_list += ["-cp", str(self.mock_jar_file)]
+            if self.lib_dir.is_dir():
+                cmd_list += ["-cp", str(self.mock_jar_file)]
             cmd_list += self.test_filepaths_str
             subprocess.run(cmd_list, capture_output=True, text=True, check=True)
             logger.info(f"Successfully compile all test cases for {self.dsl_id}.")
@@ -135,7 +137,7 @@ class TestCompiler:
             logger.info(f"Installed mock lib code for {class_fqn} in {lib_file_path}.")
         return True
 
-    def gen_mock_jar(self, only_use_llm: bool = False, skip_lib_gen: bool = False, fix_max_attempts: int = 1) -> bool:
+    def gen_mock_jar(self, only_use_llm: bool = False, skip_lib_gen: bool = False, fix_max_attempts: int = 0) -> bool:
         """
         generate a mock jar package for the dsl_id (empty implementation with only signatures)
         :param only_use_llm: Whether to only use LLM to generate the mock lib code.
@@ -146,7 +148,7 @@ class TestCompiler:
             False: failed to generate the mock jar
         """
         strategy = "LLM" if only_use_llm else "tree-sitter & LLM"
-        logger.info(f"==> Generating mock lib jar for {dsl_id} using {strategy}")
+        logger.info(f"==> Generating mock lib jar for {self.dsl_id} using {strategy}")
         ts_mocker = MockLibGenTS(self.test_dir)
         llm_mocker = MockLibGenLLM(self.test_dir)
 
@@ -167,12 +169,12 @@ class TestCompiler:
 
             # [Case 1] no need to generate mock lib code
             if mock_status and not lib_code_res:
-                logger.info(f"No mock lib code is needed for {dsl_id}")
+                logger.info(f"No mock lib code is needed for {self.dsl_id}")
                 return True
 
             # [Case 2] LLM generation failed (no mock lib code responses but expected to have)
             if not mock_status:
-                logger.warning(f"--> Failed to generate mock lib code for {dsl_id} using {strategy}!")
+                logger.warning(f"--> Failed to generate mock lib code for {self.dsl_id} using {strategy}!")
                 return False
 
             # [Case 3] Handle when we successfully extract mock lib code, which also means tests need third-party lib
@@ -186,7 +188,7 @@ class TestCompiler:
             self.ts_gen_flag = False
             mock_status, lib_code_res = llm_mocker.gen_mock_lib_code_llm()
             if not mock_status:
-                logger.warning(f"--> Failed to generate mock lib code for {dsl_id} using {strategy}!")
+                logger.warning(f"--> Failed to generate mock lib code for {self.dsl_id} using {strategy}!")
                 return False
             self.install_lib_code(lib_code_res)
             lib_compile_status, error_msg = self.compile_lib_code()
@@ -209,9 +211,11 @@ class TestCompiler:
         if not lib_compile_status:
             # TODO)) remove raise AssertionError
             raise AssertionError(
-                f"--> Failed to generate mock jar for {dsl_id} after {fix_max_attempts} fixing attempts!"
+                f"--> Failed to generate mock jar for {self.dsl_id} after {fix_max_attempts} fixing attempts!"
             )
-            logger.warning(f"--> Failed to generate mock jar for {dsl_id} after {fix_max_attempts} fixing attempts!")
+            logger.warning(
+                f"--> Failed to generate mock jar for {self.dsl_id} after {fix_max_attempts} fixing attempts!"
+            )
             shutil.rmtree(self.mock_tmp_dir)
             shutil.rmtree(self.lib_dir)
             return False
@@ -258,15 +262,15 @@ class TestCompiler:
 
         return test_case_list, lib_res
 
-    def compile_tests(self, fix_max_attempts: int = 1) -> bool:
+    def compile_tests(self, fix_max_attempts: int = 0) -> bool:
         """
         [Compile Main]Compile the test cases for the given DSL ID with multiple attempts.
         :param fix_max_attempts: The maximum number of attempts to fix compilation using LLM.
         :return: True if the compilation is successful, False otherwise.
         """
-        logger.info(f"==> Compiling test cases for {dsl_id}...")
+        logger.info(f"==> Compiling test cases for {self.dsl_id}...")
 
-        dsl_ws_dir = Path(f"kirin_ws/{dsl_id}")
+        dsl_ws_dir = Path(f"kirin_ws/{self.dsl_id}")
         test_dir = dsl_ws_dir / "test"
         assert test_dir.is_dir(), f"--> Test dirpath {test_dir} does not exists!"
         all_test_filepaths = list(test_dir.rglob("*.java"))
@@ -277,7 +281,7 @@ class TestCompiler:
         # generate, install and compile lib jar (initial: ts -> llm)
         mock_jar_status = self.gen_mock_jar(only_use_llm=False)
         if not mock_jar_status:
-            logger.error(f"--> Failed to compile test cases for {dsl_id} since generating mock jar failed!")
+            logger.error(f"--> Failed to compile test cases for {self.dsl_id} since generating mock jar failed!")
             return False
 
         # compile the test cases
@@ -288,7 +292,7 @@ class TestCompiler:
             self.ts_gen_flag = False
             mock_jar_status = self.gen_mock_jar(only_use_llm=True)
             if not mock_jar_status:
-                logger.warning(f"--> Failed to compile test cases for {dsl_id} since generating mock jar failed!")
+                logger.warning(f"--> Failed to compile test cases for {self.dsl_id} since generating mock jar failed!")
                 return False
             test_compile_status, error_msg = self.compile_test_code()
 
@@ -313,9 +317,11 @@ class TestCompiler:
         if not test_compile_status:
             # TODO)) remove raise AssertionError
             raise AssertionError(
-                f"--> Failed to compile test cases for {dsl_id} after {fix_max_attempts} fixing attempts!"
+                f"--> Failed to compile test cases for {self.dsl_id} after {fix_max_attempts} fixing attempts!"
             )
-            logger.warning(f"--> Failed to compile test cases for {dsl_id} after {fix_max_attempts} fixing attempts!")
+            logger.warning(
+                f"--> Failed to compile test cases for {self.dsl_id} after {fix_max_attempts} fixing attempts!"
+            )
             shutil.rmtree(self.mock_tmp_dir)
             shutil.rmtree(self.lib_dir)
             return False
@@ -327,5 +333,5 @@ if __name__ == "__main__":
     # Test the gen_mock_jar function
     dsl_id = "ONLINE_AG_CmdInjection"
     test_compiler = TestCompiler(dsl_id)
-    _, msg = test_compiler.compile_test_code(clear_targets=False)
-    print(f"Compile test code result: {'error: cannot find symbol' in msg}")
+    _, msg = test_compiler.compile_test_code()
+    # print(f"Compile lib code error msg: {msg}")

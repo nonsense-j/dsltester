@@ -6,7 +6,7 @@ from src.utils.types import DslInfoDict
 from src.utils._helper import create_dir_with_path
 from src.tester.parse_dsl import preprocess_dsl, save_dsl_prep_res
 from src.tester.gen_test import gen_pos_tests, save_test_info
-from tester.compile_test import TestCompiler
+from src.tester.compile_test import TestCompiler
 from src.tester.validate_test import validate_tests
 
 
@@ -58,7 +58,7 @@ def main():
     Main function to run the Kirin DSL analysis.
     """
     # Load the dataset
-    dataset_path = Path("data/test/test.json")
+    dataset_path = Path("data/test/test_one.json")
     with open(dataset_path, "r", encoding="utf-8") as f:
         dsl_info_list: list[DslInfoDict] = json.load(f)
 
@@ -81,8 +81,9 @@ def main():
         # generate dsl test
         # Currently, we only generate tests for the first node
         test_dir = dsl_ws / "test"
-        if len(list(test_dir.rglob("*.java"))) > 0:
-            logger.info(f"Found generated test cases in {test_dir}, skip...")
+        test_case_count = len(list(test_dir.rglob("*.java")))
+        if test_case_count > 0:
+            logger.info(f"Found {test_case_count} test cases in {test_dir}, skip...")
         else:
             input_dsl_text = dsl_prep_res["node_dsl_list"][0]
             test_info = gen_pos_tests(input_dsl_text)
