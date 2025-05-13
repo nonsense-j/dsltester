@@ -6,7 +6,7 @@ from src.utils.types import DslInfoDict
 from src.utils._helper import create_dir_with_path
 from src.tester.parse_dsl import preprocess_dsl, save_dsl_prep_res
 from src.tester.gen_test import gen_pos_tests, save_test_info
-from src.tester.mock_jar import gen_mock_jar
+from tester.compile_test import TestCompiler
 from src.tester.validate_test import validate_tests
 
 
@@ -75,26 +75,22 @@ def main():
         # preprocess the DSL and save the result
         dsl_ws = Path("kirin_ws") / dsl_id
         sub_dsl_dir = dsl_ws / "dsl"
-        if len(list(sub_dsl_dir.glob("*.kirin"))) > 0:
-            logger.info(f"Found preprocessed dsl in {sub_dsl_dir}, skip...")
-        else:
-            dsl_prep_res = preprocess_dsl(dsl_info["dsl"])
-            save_dsl_prep_res(dsl_prep_res, dsl_ws / "dsl")
+        dsl_prep_res = preprocess_dsl(dsl_info["dsl"])
+        save_dsl_prep_res(dsl_prep_res, dsl_ws / "dsl")
 
         # generate dsl test
         # Currently, we only generate tests for the first node
         test_dir = dsl_ws / "test"
-        if len(list(test_dir.glob("*.java"))) > 0:
+        if len(list(test_dir.rglob("*.java"))) > 0:
             logger.info(f"Found generated test cases in {test_dir}, skip...")
         else:
             input_dsl_text = dsl_prep_res["node_dsl_list"][0]
             test_info = gen_pos_tests(input_dsl_text)
             save_test_info(test_info, dsl_ws / "test")
 
-        # generate mock jar
-        lib_dir = dsl_ws / "lib"
-        if not lib_dir.is_dir():
-            gen_mock_jar(dsl_id)
+        # try to compile the test cases (mock lib + compile lib + compile test)
+        test_compiler = TestCompiler(dsl_id)
+        test_compile_status = test_compiler.compile_tests()
 
         # validate tests
         res = validate_tests(dsl_id)

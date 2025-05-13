@@ -100,5 +100,5 @@ def parse_xml_results(dsl_id) -> dict[str, DslValResDict]:
 
 if __name__ == "__main__":
     # Example usage
-    dsl_id = "example_dsl_id"
+    dsl_id = "ONLINE_AG_CmdInjection"
     validate_tests(dsl_id)

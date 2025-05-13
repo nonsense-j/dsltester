@@ -40,23 +40,23 @@ PROMPTS[
     "gen_pos_tests"
 ] = """\
 ## General Goal
-Given a code checker written in the DSL format, please generate comprehensive test cases (Java codes) that the checker can report. 
+Given a code checker written in the DSL format, please generate comprehensive and concise test cases (Java codes) that the checker can report. 
 
-## Additional information
-### Explanations of DSL nodes and corresponding properties to better understand checkers in DSL formats
-{node_properties}
-
+{additional_info}
 ## Notice: Must-follow guidelines
 Here are detailed guildlines that you must always bear in mind and follow:
-1. Each test cases must be reported by the checker, which means checker-matching code patterns must be found in them. Notely, do not be misled by \
-the rule descriptions (if exists), which describes the suggested proper behaviors while the checker reports improper ones. Since we only need test cases that \
-will be reported by the checker, all the generated test cases should disobey the rule descriptions.
-2. Each test case must be able to pass compilation, thus, it must be a complete code file with correct import statements (do not use *). Specifically, \
-use class "com.example.AnotherClass", method "anotherMethod" or field "anotherField" when you are referring to a random or mismatch class, method, field.
-3. Each test case should keep simple and minimal, excluding any code statements that are irrelevant to the checker.
-4. Include simple, necessary comments to clarify the purpose of each test case and show their differences.
-5. Ensure that each case covering the same checking scenario only occurs once and that all possible scenarios are covered. Specifically, \
+1. Each test case must be reported by the checker, which means it contains checker-matching code patterns. Notely, do not be misled by the rule \
+descriptions (if exists), which describes the suggested proper behaviors while the checker reports improper ones. Only generate test cases \
+that can be reported by the checker.
+2. Each test case should keep simple and minimal, excluding any code that is irrelevant to the checker. Include simple, necessary comments \
+to clarify the purpose of each test case and show their differences. 
+3. Each test case must be able to pass compilation. Always use correct and specific import statements (do not import *) for any class used but not defined in \
+the test case instead of fully qualified names. If you are referring to a random or mismatch class, method, or field, use names such as \
+"com.example.AnotherClass", method "anotherMethod" or field "anotherField" with proper import statements and remember to avoid dependency conflits.\
+4. Ensure that each case covering the same checking scenario only occurs once and that all necessary scenarios are covered. Specifically, \
 for regex expressions that have multiple options like "(a|b|c|d)", just use one or two of them to make the test suite concise.   
+5. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name of each test case. \
+Specifically, strictly using "PositiveTest{{i}}" as each test's main public class name where {{i}} is the test index.
 6. Output the test cases to me without detailed explanations and every test case must be independently surrounded with "```java" and "```".
 
 ### Your Task
@@ -71,15 +71,93 @@ PROMPTS[
     "gen_mock_lib_code"
 ] = """\
 ## General Goal
-Write mock Java classes for third-party libraries used in a project, based on provided code snippets. The mocks must replicate exact \
-method signatures and field declarations referenced in the snippets, with empty method bodies, default return and field values \
-(e.g., null, 0, false, '', etc.). Prioritize using Object as argument/return/field types when possible to simplify dependencies. \
-Output the complete Java files (with correct pacakge declaration) for each mock library, each wrapped in "```java" and "```".
+Write mock Java classes for third-party libraries (excluding built-in ones) used in a project, based on provided code snippets. \
+The mocks must replicate exact method signatures and field declarations referenced in the snippets, with minimum method bodies, default return \
+and field values (e.g., null, 0, false, '', etc.). Prioritize using Object as argument/return/field types when possible to simplify dependencies. 
 
+### Output Format
+Output the complete Java files (with correct pacakge declaration) for each mock library, each wrapped in "<lib-{{calss_fqn}}>" \
+and "</lib-{{class_fqn}}>". {{class_fqn}} is the corresponding fully qualified class name of the mock library, e.g., output file code\
+of the class "com.example.AnotherClass" should be warpped in "<lib-com.example.AnotherClass>" and "</lib-com.example.AnotherClass>". \
+If no third-party libraries are used in the code snippets, just output "Pass: no third-party libraries are used".
+
+### Input
 Here are the aggregated code snippets for references:
-```java
+<input_code_snippets>
 {code_snippets}
-```
+</input_code_snippets>
 
-## mock Java classes
+## Output Mock Java Classes
+"""
+
+PROMPTS[
+    "fix_syntax_error"
+] = """\
+## General Goal
+You are an expert in Java programming and code analysis. I will provide you with a list of Java codes each wrapped in "```java" and "```". \
+Each code is the content of a complete Java file containing syntax errors, and you need to fix these errors in them without changing the \
+identifier names, structure and behaviors in the code. Directly output the fixed code in the same order as the input, each wrapped in "```java" and "```".
+
+### Input java code
+{wrapped_java_code}
+
+### Output
+"""
+
+PROMPTS[
+    "fix_mock_lib_code"
+] = """\
+The mock library code files generated in the last step are not able to pass package compilation using "javac" and "jar". \
+Here are the compilation errors:
+<error_msg>
+{error_msg}
+</error_msg>
+
+Please fix the mock library code to make it pass compilation and directly output the fixed code files with the same format, each also wrapped in "<lib-{{calss_fqn}}>" \
+and "</lib-{{class_fqn}}>".
+"""
+
+PROMPTS[
+    "fix_test_compile_with_lib"
+] = """\
+## General Goal
+You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files.\
+As inputs, I will provide you with a list of the Java code files, their mocked third-party library code as dependencies and the error message.\
+When compiling these Java files with the dependency libs, the compiler reports errors. You need to fix these errors by modifying the Java files \
+and the library code if necessary. Keep the original code identifier naming, structure and logic as much as possible. \
+
+### Input and Output Format
+For both input and output, each Java code file is wrapped in "<java_file>" and "</java_file>" and each library code is wrapped in \
+"<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Directly output all the fixed code files and library code wrapped in the same format. \
+Unchanged code files and library code should also be output as they are.
+
+### Input
+- Mock Library code files:
+{wrapped_lib_code}
+- Java code files:
+{wrapped_java_code}
+- Compilation error message:
+{error_msg}
+
+### Output
+"""
+
+PROMPTS[
+    "fix_test_compile_wo_lib"
+] = """\
+## General Goal
+You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files.\
+As inputs, I will provide you with a list of the Java code files and the compilation error message.\
+
+### Input and Output Format
+For both input and output, each Java code file must be wrapped in "<java_file>" and "</java_file>". \
+Directly output the fixed code files wrapped in the same format. Unchanged code files and library code should also be output as they are.
+
+### Input
+- Java code files:
+{wrapped_java_code}
+- Compilation error message:
+{error_msg}
+
+### Output
 """

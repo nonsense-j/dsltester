@@ -49,10 +49,10 @@ class KirinRunner:
         cls.check_config()
         logger.info(f"Executing dsl_kirin analysis with dsl_dir: {dsl_dir}")
         # check whether the dsls and test cases have been prepared
-        if (not dsl_dir.is_dir()) or len(list(dsl_dir.glob("*.kirin"))) == 0:
+        if (not dsl_dir.is_dir()) or len(list(dsl_dir.rglob("*.kirin"))) == 0:
             logger.error(f"--> No dsls are found in {dsl_dir}!")
             return None
-        if (not test_dir.is_dir()) or len(list(test_dir.glob("*.java"))) == 0:
+        if (not test_dir.is_dir()) or len(list(test_dir.rglob("*.java"))) == 0:
             logger.error(f"--> No test cases are found in {test_dir}!")
             return None
 

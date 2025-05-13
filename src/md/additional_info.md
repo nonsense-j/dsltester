@@ -1,4 +1,9 @@
+## Additional information
+
+### Explanations of DSL nodes and corresponding properties to better understand checkers in DSL formats
+
 #### 基础节点
+
 - annotation: 注解. 2 supported properties: name(名称, value type is 字符串), annoMembers(注解的注解项, value type is annomember节点集合).
 - annoMember: 注解项. 2 supported properties: name(名称, value type is 字符串), annoValue(注解项的具体值, value type is literal、enumConstantAccess、fieldAcccess节点).
 - recordDeclaration: 类/接口声明. 8 supported properties: name(类名，包含包名, value type is 字符串), comments(注释, value type is comment节点集合), kind(类类型，可能是interface或class, value type is 字符串), superTypes(所有直接和间接集成的父类和接口, value type is recordDeclartion节点集合), directSuperTypes(直接集成的父类和接口, value type is recordDeclartion节点集合), definedFields(类中定义的所有字段, value type is fieldDeclaration节点集合), definedConstructors(类中定义的所有构造方法, value type is functionCall节点集合), definedMethods(类中定义的所有方法, value type is functionCall节点集合).
@@ -59,8 +64,10 @@
 - javadocComment: javadoc注释. 2 supported properties: content(注释的内容, value type is 字符串), commentedNode(被注释的节点, value type is 节点).
 
 #### 类型节点
+
 - type: 类型节点，是AST节点的通用属性，表示一个变量、字段、方法返回值等的类型，变量声明的类型按”=“左边的声明类型算类型. 3 supported properties: name(类型的名称（包含包名的全类型）
 int
 String, value type is 字符串), definition(类型的定义, value type is recordDeclaration节点), superTypes(类型的父类型, value type is type节点).
 - arrayType: 数组类型，继承于type节点. 3 supported properties: name(数组类型的名称, value type is 字符串), dimension(数组的维度大小, value type is 数字), baseType(数组类型的基础类型, value type is objectType节点).
 - objectType: 对象类型，包括类、接口类、枚举类、泛型类，继承与objectType节点. 7 supported properties: name(类型的名称（包含包名的全类型）, value type is 名称), isBounded(泛型类型是否 extends/super 了另一个类, 仅对泛型类型生效, value type is 布尔值), boundedOperator(泛型类型绑定符号是"extends" 或 "super", 仅对泛型类型生效, value type is 字符串), genericBoundedType(泛型类型绑定的类型, value type is type节点), generics(类型的直接泛型类, value type is type节点集合), allGenerics(类型的所有直接+间接泛型类, value type is type节点集合), terminalGenerics(类型的末端泛型类, value type is node list).
+

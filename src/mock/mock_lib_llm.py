@@ -1,5 +1,5 @@
 """
-[Slower]
+[Slower but sounder]
 This module is used to generate mock libraries for third-party packages using LLM.
 """
 
@@ -8,67 +8,97 @@ from pathlib import Path
 
 from src.tester.prompts import PROMPTS
 from src.utils._logger import logger
-from src.utils._llm import query_llm
+from src.utils._llm import LLMWrapper
+from src.utils._helper import is_third_class, parse_lib_code
 
 
-def extract_pkg_and_class_name(java_code: str):
-    pkg_name = None
-    class_name = None
-
-    pkg_match = re.search(r"^\s*package\s+([a-zA-Z0-9_.]+);", java_code, re.MULTILINE)
-    if pkg_match:
-        pkg_name = pkg_match.group(1)
-
-    class_match = re.search(r"^\s*public\s+class\s+([a-zA-Z_$][a-zA-Z0-9_$]*)", java_code, re.MULTILINE)
-    if class_match:
-        class_name = class_match.group(1)
-
-    return pkg_name, class_name
-
-
-def gen_mock_lib_code_llm(test_dir: Path) -> dict[str, str]:
+class MockLibGenLLM:
     """
-    Use LLM to get all the mock lib codes for each thir-party package.
-    :param test_dir: The directory containing the test cases.
-    :return: {"{class_fqn}": "{mock_code}"}
+    A wrapper class for LLM to generate mock libraries for third-party packages.
     """
-    assert test_dir.is_dir(), f"Test directory {test_dir} does not exist!"
-    # read all the test cases
-    all_test_files = list(test_dir.glob("*.java"))
-    if len(all_test_files) == 0:
-        logger.warning(f"--> No test cases are found in {test_dir}!")
-        return dict()
 
-    logger.info(f"Generating mock lib for {len(all_test_files)} test cases in {test_dir}...")
-    code_snippets = ""
-    for test_file in all_test_files:
-        with open(test_file, "r", encoding="utf-8") as f:
-            code_snippets += f.read() + "\n\n"
+    def __init__(self, test_dir: Path):
+        self.test_dir = test_dir
+        assert test_dir.is_dir(), f"Test directory {test_dir} does not exist!"
 
-    # construct the user prompt
-    prompt = PROMPTS["gen_mock_lib_code"].format(code_snippets=code_snippets)
-    llm_result = query_llm(prompt)
-    logger.debug(f"LLM LibGenerator result: \n{llm_result}")
+        self.test_filepaths = list(test_dir.rglob("*.java"))
+        assert len(self.test_filepaths) > 0, f"Test directory {test_dir} does not contain any Java files!"
 
-    # parse result
-    pattern = r"```java(.*?)```"
-    lib_code_list = re.findall(pattern, llm_result, re.DOTALL)
+        # code snippets for all test files
+        self.all_test_code = ""
+        for test_file in self.test_filepaths:
+            self.all_test_code += test_file.read_text(encoding="utf-8") + "\n\n"
 
-    res = {}
-    for lib_code in lib_code_list:
-        lib_code = lib_code.strip()
-        pkg_name, class_name = extract_pkg_and_class_name(lib_code)
+    def gen_mock_lib_code_llm_once(self) -> tuple[bool, dict[str, str]]:
+        """
+        Use LLM to get all the mock lib codes for each thir-party package.
+        :return: {"{class_fqn}": "{mock_code}"}
+        """
+        logger.info(f"Generating mock lib for {len(self.test_filepaths)} tests in {self.test_dir} using LLM...")
 
-        # pkg_name and class_name should not be None
-        assert pkg_name is not None, f"Package name not found in the mock code: {lib_code}"
-        assert class_name is not None, f"Class name not found in the mock code: {lib_code}"
+        # construct the user prompt
+        prompt = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code)
+        llm_result = LLMWrapper.query_llm(prompt, query_type="gen_mock_lib_code")
+        logger.debug(f"LLM LibGenerator result: \n{llm_result}")
 
-        if pkg_name and class_name:
-            class_fqn = f"{pkg_name}.{class_name}"
-            # check for duplicate class names
-            assert class_fqn not in res, f"Duplicate class name {class_fqn} found in the mock code!"
-            res[class_fqn] = lib_code
+        # parse result
+        if "Pass: no third-party libraries are used" in llm_result:
+            return True, dict()
+        res_status, lib_res = parse_lib_code(llm_result)
 
-    logger.info(f"Generated {len(res)} mock lib codes: \n{', '.join(list(res.keys()))}")
+        fqn_list = list(lib_res.keys())
+        logger.info(f"Generated {len(lib_res)} mock lib codes: \n{', '.join(fqn_list)}")
 
-    return res
+        return res_status, lib_res
+
+    def gen_mock_lib_code_llm(self, retry_max_attempts: int = 0) -> tuple[bool, dict[str, str]]:
+        """
+        Retry the LLM generation for mock lib code.
+        :param test_dir: The directory containing the test cases.
+        :param retry_max_attempts: The maximum number of times to retry.
+        :return: {"{class_fqn}": "{mock_code}"}
+        """
+        res_status, lib_res = self.gen_mock_lib_code_llm_once()
+        if res_status:
+            return res_status, lib_res
+        else:
+            # retry if the result is empty
+            for attempt in range(1, retry_max_attempts + 1):
+                logger.warning(
+                    f"--> [Detected LLM GenMock Failure]Retrying... (attempt {attempt}/{retry_max_attempts})"
+                )
+                res_status, lib_res = self.gen_mock_lib_code_llm_once()
+                if res_status:
+                    return res_status, lib_res
+        # TODO)) return False instead of raising an error
+        # return False, lib_res
+        raise AssertionError(f"LLM GenMock failed after {retry_max_attempts} attempts! Please check the LLM output.")
+
+    def fix_mock_lib_code(self, lib_res_dict: dict[str, str], error_msg: str) -> dict[str, str]:
+        """
+        Fix the mock lib code to make it pass compilation for package.
+        :param lib_res_dict: The dictionary containing the mock lib code.
+        :param error_msg: The error message from the compilation.
+        :return: {"{class_fqn}": "{mock_code}"}
+        """
+        # construct the messages
+        gen_mock_in = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code)
+        gen_mock_out = ""
+        for class_fqn, lib_code in lib_res_dict.items():
+            gen_mock_out += f"<lib-{class_fqn}>\n{lib_code}\n</lib-{class_fqn}>\n"
+        fix_in = PROMPTS["fix_mock_lib_code"].format(error_msg=error_msg)
+
+        messages = [
+            {"role": "user", "content": gen_mock_in},
+            {"role": "assistant", "content": gen_mock_out},
+            {"role": "user", "content": fix_in},
+        ]
+        llm_result = LLMWrapper.query_llm_with_msg(messages=messages, query_type="fix_mock_lib_code")
+        logger.debug(f"LLM LibFixer result: \n{llm_result}")
+
+        # parse result
+        res_status, lib_res = parse_lib_code(llm_result)
+        # return False instead of raising an error
+        assert res_status, f"LLM FixMock failed! Please check the LLM output: \n{llm_result}"
+
+        return res_status, lib_res

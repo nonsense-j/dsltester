@@ -1,7 +1,7 @@
 """
-[Faster]
+[Faster but not sound]
 This module is used to generate mock libraries for third-party packages using tree-sitter.
-It can also be used to detect whether the Java codes is using third-party libraries.
+It can also be used to detect whether the Java codes is using third-party libraries (refer to the res_status and lib_code_map).
 """
 
 import json
@@ -11,6 +11,7 @@ from typing import TypedDict
 from tree_sitter import Language, Parser
 
 from src.utils._logger import logger
+from src.utils._helper import is_third_class
 
 # Java Premitive Types -> defult value
 PREMITIVE_TYPE_DEFAULT = {
@@ -59,6 +60,7 @@ class JavaDependencyParser:
         self.type_info = {}  # only single file: x -> String
 
         self.usage_info = {}  # share among dir: x.y.z.Cls -> {methods: [], fields: []}
+        self.expected_third_fqn_set = set()  # share among dir: third-party class fqn set
 
     def parse_file(self, file_path: Path):
         """Parse a Java file and extract third-party dependency information."""
@@ -84,6 +86,7 @@ class JavaDependencyParser:
 
         if self.scoped_class_info:
             # Extract usage of imported classes to self.usage_info
+            self.expected_third_fqn_set.update(self.scoped_class_info.values())
             self._visit_node(tree.root_node)
 
         return self.usage_info
@@ -91,7 +94,7 @@ class JavaDependencyParser:
     def parse_directory(self, directory_path: Path):
         """Parse all Java files in a directory and extract third-party dependency information."""
         assert directory_path.is_dir(), f"directory_path {directory_path} is not a directory"
-        java_files = list(directory_path.glob("*.java"))
+        java_files = list(directory_path.rglob("*.java"))
         for java_file in java_files:
             logger.info(f"Parsing lib code for file: {java_file}")
             file_path = java_file.resolve()
@@ -179,7 +182,7 @@ class JavaDependencyParser:
         captures = import_query.captures(root_node)
         for node in captures.get("import_class", []):
             class_fqn = node.text.decode("utf-8")
-            if class_fqn in self.scoped_class_info:
+            if not is_third_class(class_fqn) or class_fqn in self.scoped_class_info:
                 continue
             self.scoped_class_info[class_fqn] = class_fqn
             access_name = node.child_by_field_name("name").text.decode("utf-8")
@@ -194,7 +197,41 @@ class JavaDependencyParser:
         captures = scoped_type_query.captures(root_node)
         for node in captures.get("scoped_class_type", []):
             class_fqn = node.text.decode("utf-8")
-            if class_fqn in self.scoped_class_info:
+            if not is_third_class(class_fqn) or class_fqn in self.scoped_class_info:
+                continue
+            self.scoped_class_info[class_fqn] = class_fqn
+
+        # String s = com.exp.Class.staticMethod()
+        static_fqn_query = self.JAVA_LANGUAGE.query(
+            """
+            [
+                (method_invocation
+                    object: (field_access
+                        object: (field_access
+                            object: [
+                            (field_access)
+                            (identifier)
+                            ]
+                        )
+                    ) @fqn_field
+                )
+                (field_access
+                    object: (field_access
+                        object: (field_access
+                            object: [
+                            (field_access)
+                            (identifier)
+                            ]
+                        )
+                    ) @fqn_field
+                )
+            ]
+        """
+        )
+        captures = static_fqn_query.captures(root_node)
+        for node in captures.get("fqn_field", []):
+            class_fqn = node.text.decode("utf-8")
+            if not is_third_class(class_fqn) or class_fqn in self.scoped_class_info:
                 continue
             self.scoped_class_info[class_fqn] = class_fqn
 
@@ -237,6 +274,8 @@ class JavaDependencyParser:
                 var_type = child.child_by_field_name("type").text.decode("utf-8")
                 var_name = child.child_by_field_name("name").text.decode("utf-8")
                 self.type_info[var_name] = var_type
+            elif child.type == "class_declaration":
+                self.type_info["this"] = child.child_by_field_name("name").text.decode("utf-8")
             elif child.type == "object_creation_expression":
                 self._process_constructor(child)
             elif child.type == "method_invocation":
@@ -479,32 +518,52 @@ class JavaDependencyParser:
             return hash_str
 
 
-def gen_mock_lib_code_ts(test_dir: Path) -> dict[str, str]:
+class MockLibGenTS:
     """
-    Use tree-sitter to get all the mock lib codes for each third-party package.
-    :param test_dir: The directory containing the test cases.
-    :return: {"{class_fqn}": "{mock_code}"}
+    A wrapper class for gen_mock_lib_code_ts.
     """
-    assert test_dir.is_dir(), f"Test directory {test_dir} does not exist!"
-    # read all the test cases
-    all_test_files = list(test_dir.glob("*.java"))
-    if len(all_test_files) == 0:
-        logger.warning(f"--> No test cases are found in {test_dir}!")
-        return dict()
 
-    logger.info(f"Generating mock lib for {len(all_test_files)} test cases in {test_dir}")
-    jd_parser = JavaDependencyParser()
-    jd_parser.parse_directory(test_dir)
-    logger.info(f"Lib Parser result for {test_dir}: \n{json.dumps(jd_parser.usage_info, indent=2)}")
-    res = jd_parser.usage_info_to_code()
+    def __init__(self, test_dir: Path):
+        self.test_dir = test_dir
+        assert test_dir.is_dir(), f"Test directory {test_dir} does not exist!"
 
-    logger.info(f"Generated {len(res)} mock lib codes: \n{', '.join(list(res.keys()))}.")
+        self.test_filepaths = list(test_dir.rglob("*.java"))
+        assert len(self.test_filepaths) > 0, f"Test directory {test_dir} does not contain any Java files!"
 
-    return res
+        self.parser = JavaDependencyParser()
+
+    def gen_mock_lib_code_ts(self) -> tuple[bool, dict[str, str]]:
+        """
+        Use tree-sitter to get all the mock lib codes for each third-party package.
+        :return: res_status: mock succeeds or fails (expected nonnull but generate incomplete or null), lib_code_map:{"{class_fqn}": "{mock_code}"}
+        """
+        logger.info(f"Generating mock lib for {len(self.test_filepaths)} tests in {self.test_dir} with tree-sitter...")
+        jd_parser = JavaDependencyParser()
+        jd_parser.parse_directory(self.test_dir)
+        logger.info(f"Lib Parser result for {self.test_dir}: \n{json.dumps(jd_parser.usage_info, indent=2)}")
+        expected_third_fqn_set = jd_parser.expected_third_fqn_set
+        lib_code_map = jd_parser.usage_info_to_code()
+
+        if len(expected_third_fqn_set) == 0:
+            return True, dict()
+        else:
+            lib_code_key_set = set(lib_code_map.keys())
+            logger.info(
+                f"Expected {len(expected_third_fqn_set)} third-party classes: \n{', '.join(expected_third_fqn_set)}"
+            )
+            logger.info(f"Generated {len(lib_code_map)} third-party classes: \n{', '.join(lib_code_key_set)}.")
+            if expected_third_fqn_set != lib_code_key_set:
+                logger.warning(f"--> generated lib classes mismatch with the expected.")
+                res_status = False
+            else:
+                res_status = True
+        return res_status, lib_code_map
 
 
 if __name__ == "__main__":
     # test_with_example()
-    res = gen_mock_lib_code_ts(Path("kirin_ws/test_tmp/test"))
-    for class_fqn, mock_code in res.items():
+    lib_mocker_ts = MockLibGenTS(Path("kirin_ws/test_tmp/test"))
+    status, lib_res = lib_mocker_ts.gen_mock_lib_code_ts()
+    print(f"==> Lib code generation status: {status}")
+    for class_fqn, mock_code in lib_res.items():
         print(f"==> {class_fqn}: \n{mock_code}")

@@ -11,9 +11,10 @@ class DslInfoDict(TypedDict):
 
 
 class TestInfoDict(TypedDict):
-    positive: List[str]
-    negative: List[str]
-    unknown: List[str]
+    # file_stem: code
+    positive: List[tuple[str, str]]
+    negative: List[tuple[str, str]]
+    unknown: List[tuple[str, str]]
 
 
 class DslPrepResDict(TypedDict):
