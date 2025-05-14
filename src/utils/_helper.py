@@ -50,10 +50,10 @@ def read_file(file_path: Path) -> str:
     return content
 
 
-def is_third_class(class_name: str) -> bool:
+def is_third_class(class_fqn: str) -> bool:
     """
     check if the class name is a third class
-    :param class_name: class name
+    :param class_fqn: class name
     :return: True if the class name is a third class
     """
     # look for: https://docs.oracle.com/en/java/javase/17/docs/api/allpackages-index.html
@@ -67,7 +67,20 @@ def is_third_class(class_name: str) -> bool:
         "org.w3c.dom",
         "org.xml.sax",
     ]
-    return not any([class_name.startswith(prefix) for prefix in builtin_pkg_prefixes])
+    return not any([class_fqn.startswith(prefix) for prefix in builtin_pkg_prefixes])
+
+
+def is_standard_class(class_fqn: str) -> bool:
+    """
+    Check whether the class fqn follows best practice.
+    package id len >= 2; package ids must lowercase; class id must start with upper case
+    """
+    pkg_name, cls_name = class_fqn.rsplit(".", 1)
+    # pkg len > 2
+    if "." not in pkg_name:
+        return False
+    # pkg name must be lowercase, cls name must start with upper case
+    return pkg_name.lower() and cls_name[0].isupper()
 
 
 def save_dsl_prep_result(dsl_prep_result: DslPrepResDict, save_dir: Path):
@@ -147,7 +160,7 @@ def create_test_info(test_case_list: list[str]) -> TestInfoDict:
     return test_info
 
 
-def parse_lib_code(llm_result: str) -> tuple[bool, dict[str, str]]:
+def parse_lib_code(llm_result: str) -> dict[str, str]:
     """
     Parse the LLM result to get the mock lib code.
     :param llm_result: The LLM result string.
@@ -155,7 +168,6 @@ def parse_lib_code(llm_result: str) -> tuple[bool, dict[str, str]]:
     """
     wrapper = r"<lib-(.*?)>\s*(.*?)\s*</lib-\1>"
     llm_parse_res = re.findall(wrapper, llm_result, re.DOTALL)
-    res_status = len(llm_parse_res) > 0
     lib_res = dict()
     for lib_code in llm_parse_res:
         class_fqn = lib_code[0].strip()
@@ -165,7 +177,7 @@ def parse_lib_code(llm_result: str) -> tuple[bool, dict[str, str]]:
             assert class_fqn not in lib_res, f"Duplicate class name {class_fqn} found in the mock code!"
             lib_res[class_fqn] = lib_code
 
-    return res_status, lib_res
+    return lib_res
 
 
 def validate_syntax(java_code_list: list[str]) -> list[bool]:

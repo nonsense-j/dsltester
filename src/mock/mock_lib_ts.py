@@ -11,7 +11,7 @@ from typing import TypedDict
 from tree_sitter import Language, Parser
 
 from src.utils._logger import logger
-from src.utils._helper import is_third_class
+from src.utils._helper import is_third_class, is_standard_class
 
 # Java Premitive Types -> defult value
 PREMITIVE_TYPE_DEFAULT = {
@@ -101,49 +101,50 @@ class JavaDependencyParser:
             self.parse_file(file_path)
         return self.usage_info
 
-    def usage_info_to_code(self) -> dict[str, str]:
+    def gen_third_party_lib_code(self) -> dict[str, str]:
         """
-        Convert the usage information to code.
+        Convert the usage information and expected_third_fqn_set to a dictionary of mock code.
         :return: A dictionary containing the usage information -> {"{class_fqn}": "{mock_code}"}
-        The return type is same as the gen_mock_lib_code_llm.
+        The return type is same as the gen_mock_lib_code_llm. (class_fqn -> mock code)
         """
         res = {}
-        for class_fqn, usage in self.usage_info.items():
-            # construct the class body
+        for class_fqn in self.expected_third_fqn_set:
             class_body = ""
-            # add fields
-            field_sig_list = usage.get("fields", [])
-            for field_sig in field_sig_list:
-                if field_sig["is_static"]:
-                    field_sig_str = f"public static {field_sig['type']} {field_sig['name']};"
-                else:
-                    field_sig_str = f"public {field_sig['type']} {field_sig['name']};"
-                class_body += f"\t{field_sig_str}\n"
-            class_body += "\n"
-            # add constructors
-            constructor_sig_list = usage.get("constructors", [])
-            for constructor_sig in constructor_sig_list:
-                arg_str_list = [f"{x} arg_{i+1}" for i, x in enumerate(constructor_sig["arg_type_list"])]
-                class_name = class_fqn.split(".")[-1]
-                constructor_str = f"public {class_name}({', '.join(arg_str_list)}) {{\n\t\t// pass\n\t}}\n"
-                class_body += f"\t{constructor_str}\n"
-            # add methods
-            method_sig_list = usage.get("methods", [])
-            for method_sig in method_sig_list:
-                method_name = method_sig["name"]
-                method_type = method_sig["type"]
-                arg_str_list = [f"{x} arg_{i+1}" for i, x in enumerate(method_sig["arg_type_list"])]
-                args_full_str = ", ".join(arg_str_list)
-                if method_sig["is_static"]:
-                    method_str = f"public static {method_type} {method_name}({args_full_str})"
-                else:
-                    method_str = f"public {method_type} {method_name}({args_full_str})"
-                if method_type == "void":
-                    method_str += " {\n\t\t// pass\n\t}"
-                else:
-                    method_type_value = PREMITIVE_TYPE_DEFAULT.get(method_type, "null")
-                    method_str += f" {{\n\t\treturn {method_type_value};\n\t}}"
-                class_body += f"\t{method_str}\n\n"
+            if class_fqn in self.usage_info:
+                usage = self.usage_info[class_fqn]
+                # add fields
+                field_sig_list = usage.get("fields", [])
+                for field_sig in field_sig_list:
+                    if field_sig["is_static"]:
+                        field_sig_str = f"public static {field_sig['type']} {field_sig['name']};"
+                    else:
+                        field_sig_str = f"public {field_sig['type']} {field_sig['name']};"
+                    class_body += f"\t{field_sig_str}\n"
+                class_body += "\n"
+                # add constructors
+                constructor_sig_list = usage.get("constructors", [])
+                for constructor_sig in constructor_sig_list:
+                    arg_str_list = [f"{x} arg_{i+1}" for i, x in enumerate(constructor_sig["arg_type_list"])]
+                    class_name = class_fqn.split(".")[-1]
+                    constructor_str = f"public {class_name}({', '.join(arg_str_list)}) {{\n\t\t// pass\n\t}}\n"
+                    class_body += f"\t{constructor_str}\n"
+                # add methods
+                method_sig_list = usage.get("methods", [])
+                for method_sig in method_sig_list:
+                    method_name = method_sig["name"]
+                    method_type = method_sig["type"]
+                    arg_str_list = [f"{x} arg_{i+1}" for i, x in enumerate(method_sig["arg_type_list"])]
+                    args_full_str = ", ".join(arg_str_list)
+                    if method_sig["is_static"]:
+                        method_str = f"public static {method_type} {method_name}({args_full_str})"
+                    else:
+                        method_str = f"public {method_type} {method_name}({args_full_str})"
+                    if method_type == "void":
+                        method_str += " {\n\t\t// pass\n\t}"
+                    else:
+                        method_type_value = PREMITIVE_TYPE_DEFAULT.get(method_type, "null")
+                        method_str += f" {{\n\t\treturn {method_type_value};\n\t}}"
+                    class_body += f"\t{method_str}\n\n"
 
             # construct the lib code
             package_name, class_name = class_fqn.rsplit(".", 1)
@@ -171,37 +172,43 @@ class JavaDependencyParser:
 
     def _extract_imports(self, root_node):
         """Extract all third-party scope classes from the AST."""
-        # import classes
-        import_query = self.JAVA_LANGUAGE.query(
+        # scoped_identifiers: import classes, fqn annotations, etc.
+        scoped_id_query = self.JAVA_LANGUAGE.query(
             """
-            (import_declaration
-            (scoped_identifier) @import_class
-            )
+            (scoped_identifier) @scoped_class
         """
         )
-        captures = import_query.captures(root_node)
-        for node in captures.get("import_class", []):
+        captures = scoped_id_query.captures(root_node)
+        for node in captures.get("scoped_class", []):
+            # only get the outer class name
+            if node.parent.type == "scoped_identifier":
+                continue
             class_fqn = node.text.decode("utf-8")
             if not is_third_class(class_fqn) or class_fqn in self.scoped_class_info:
                 continue
             self.scoped_class_info[class_fqn] = class_fqn
-            access_name = node.child_by_field_name("name").text.decode("utf-8")
-            self.scoped_class_info[access_name] = class_fqn
+            if node.parent.type == "import_declaration":
+                # link the class name to the fqn
+                access_name = node.child_by_field_name("name").text.decode("utf-8")
+                self.scoped_class_info[access_name] = class_fqn
 
         # Process scoped type identifiers, use full name in the code
         scoped_type_query = self.JAVA_LANGUAGE.query(
             """
-            (scoped_type_identifier (scoped_type_identifier)) @scoped_class_type
+            (scoped_type_identifier) @scoped_class_type
         """
         )
         captures = scoped_type_query.captures(root_node)
         for node in captures.get("scoped_class_type", []):
+            # only get the outer class name
+            if node.parent.type == "scoped_type_identifier":
+                continue
             class_fqn = node.text.decode("utf-8")
             if not is_third_class(class_fqn) or class_fqn in self.scoped_class_info:
                 continue
             self.scoped_class_info[class_fqn] = class_fqn
 
-        # String s = com.exp.Class.staticMethod()
+        # String s = com.exp.Class.staticMethod(), class fqn must follow best-practice
         static_fqn_query = self.JAVA_LANGUAGE.query(
             """
             [
@@ -230,8 +237,13 @@ class JavaDependencyParser:
         )
         captures = static_fqn_query.captures(root_node)
         for node in captures.get("fqn_field", []):
+            if node.parent.type == "field_access":
+                if node.parent.parent.type in ["method_invocation", "field_access"]:
+                    continue
             class_fqn = node.text.decode("utf-8")
-            if not is_third_class(class_fqn) or class_fqn in self.scoped_class_info:
+            if not is_standard_class(class_fqn) or not is_third_class(class_fqn):
+                continue
+            if class_fqn in self.scoped_class_info:
                 continue
             self.scoped_class_info[class_fqn] = class_fqn
 
@@ -532,38 +544,28 @@ class MockLibGenTS:
 
         self.parser = JavaDependencyParser()
 
-    def gen_mock_lib_code_ts(self) -> tuple[bool, dict[str, str]]:
+    def gen_mock_lib_code_ts(self) -> dict[str, str]:
         """
         Use tree-sitter to get all the mock lib codes for each third-party package.
-        :return: res_status: mock succeeds or fails (expected nonnull but generate incomplete or null), lib_code_map:{"{class_fqn}": "{mock_code}"}
+        :return: lib_code_map:{"{class_fqn}": "{mock_code}"}
         """
         logger.info(f"Generating mock lib for {len(self.test_filepaths)} tests in {self.test_dir} with tree-sitter...")
         jd_parser = JavaDependencyParser()
         jd_parser.parse_directory(self.test_dir)
         logger.info(f"Lib Parser result for {self.test_dir}: \n{json.dumps(jd_parser.usage_info, indent=2)}")
-        expected_third_fqn_set = jd_parser.expected_third_fqn_set
-        lib_code_map = jd_parser.usage_info_to_code()
+        lib_code_map = jd_parser.gen_third_party_lib_code()
 
-        if len(expected_third_fqn_set) == 0:
-            return True, dict()
+        if not lib_code_map:
+            logger.info(f"No third-party dependencies detected by tree-sitter.")
         else:
-            lib_code_key_set = set(lib_code_map.keys())
-            logger.info(
-                f"Expected {len(expected_third_fqn_set)} third-party classes: \n{', '.join(expected_third_fqn_set)}"
-            )
-            logger.info(f"Generated {len(lib_code_map)} third-party classes: \n{', '.join(lib_code_key_set)}.")
-            if expected_third_fqn_set != lib_code_key_set:
-                logger.warning(f"--> generated lib classes mismatch with the expected.")
-                res_status = False
-            else:
-                res_status = True
-        return res_status, lib_code_map
+            logger.info(f"Generated {len(lib_code_map)} third-party classes: \n{', '.join(lib_code_map.keys())}.")
+        return lib_code_map
 
 
 if __name__ == "__main__":
     # test_with_example()
     lib_mocker_ts = MockLibGenTS(Path("kirin_ws/test_tmp/test"))
-    status, lib_res = lib_mocker_ts.gen_mock_lib_code_ts()
-    print(f"==> Lib code generation status: {status}")
+    lib_res = lib_mocker_ts.gen_mock_lib_code_ts()
+    print(f"==> Lib code generation result: ")
     for class_fqn, mock_code in lib_res.items():
         print(f"==> {class_fqn}: \n{mock_code}")

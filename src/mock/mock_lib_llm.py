@@ -29,7 +29,7 @@ class MockLibGenLLM:
         for test_file in self.test_filepaths:
             self.all_test_code += test_file.read_text(encoding="utf-8") + "\n\n"
 
-    def gen_mock_lib_code_llm_once(self) -> tuple[bool, dict[str, str]]:
+    def gen_mock_lib_code_llm(self) -> dict[str, str]:
         """
         Use LLM to get all the mock lib codes for each thir-party package.
         :return: {"{class_fqn}": "{mock_code}"}
@@ -44,35 +44,25 @@ class MockLibGenLLM:
         # parse result
         if "Pass: no third-party libraries are used" in llm_result:
             return True, dict()
-        res_status, lib_res = parse_lib_code(llm_result)
+        lib_res = parse_lib_code(llm_result)
+        logger.info(f"Generated {len(lib_res)} thhird-party classes: \n{', '.join(lib_res.keys())}")
 
-        fqn_list = list(lib_res.keys())
-        logger.info(f"Generated {len(lib_res)} mock lib codes: \n{', '.join(fqn_list)}")
+        return lib_res
 
-        return res_status, lib_res
-
-    def gen_mock_lib_code_llm(self, retry_max_attempts: int = 0) -> tuple[bool, dict[str, str]]:
+    def gen_mock_lib_code_llm_retry(self, retry_max_attempts: int = 0) -> dict[str, str]:
         """
         Retry the LLM generation for mock lib code.
         :param test_dir: The directory containing the test cases.
         :param retry_max_attempts: The maximum number of times to retry.
         :return: {"{class_fqn}": "{mock_code}"}
         """
-        res_status, lib_res = self.gen_mock_lib_code_llm_once()
-        if res_status:
-            return res_status, lib_res
-        else:
-            # retry if the result is empty
-            for attempt in range(1, retry_max_attempts + 1):
-                logger.warning(
-                    f"--> [Detected LLM GenMock Failure]Retrying... (attempt {attempt}/{retry_max_attempts})"
-                )
-                res_status, lib_res = self.gen_mock_lib_code_llm_once()
-                if res_status:
-                    return res_status, lib_res
-        # TODO)) return False instead of raising an error
-        # return False, lib_res
-        raise AssertionError(f"LLM GenMock failed after {retry_max_attempts} attempts! Please check the LLM output.")
+        for attempt in range(1, retry_max_attempts + 1):
+            logger.warning(f"--> [Detected LLM GenMock Failure]Retrying... (attempt {attempt}/{retry_max_attempts})")
+            lib_res = self.gen_mock_lib_code_llm()
+            if lib_res:
+                return lib_res
+        logger.error(f"--> LLM GenMock failed after {retry_max_attempts} attempts! Please check the LLM output.")
+        return lib_res
 
     def fix_mock_lib_code(self, lib_res_dict: dict[str, str], error_msg: str) -> dict[str, str]:
         """
@@ -97,8 +87,8 @@ class MockLibGenLLM:
         logger.debug(f"LLM LibFixer result: \n{llm_result}")
 
         # parse result
-        res_status, lib_res = parse_lib_code(llm_result)
+        lib_res = parse_lib_code(llm_result)
         # return False instead of raising an error
-        assert res_status, f"LLM FixMock failed! Please check the LLM output: \n{llm_result}"
+        assert not lib_res, f"LLM FixMock No Output! Please check the LLM output: \n{llm_result}"
 
-        return res_status, lib_res
+        return lib_res

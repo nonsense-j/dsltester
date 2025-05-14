@@ -48,10 +48,10 @@ Here are detailed guildlines that you must always bear in mind and follow:
 1. Each test case must be reported by the checker, which means it contains checker-matching code patterns. Notely, do not be misled by the rule \
 descriptions (if exists), which describes the suggested proper behaviors while the checker reports improper ones. Only generate test cases \
 that can be reported by the checker.
-2. Each test case should keep simple and minimal, excluding any code that is irrelevant to the checker. Include simple, necessary comments \
+2. Each test case should keep clear, simple and minimal, excluding any code that is irrelevant to the checker. Include simple, necessary comments \
 to clarify the purpose of each test case and show their differences. 
-3. Each test case must be able to pass compilation. Always use correct and specific import statements (do not import *) for any class used but not defined in \
-the test case instead of fully qualified names. If you are referring to a random or mismatch class, method, or field, use names such as \
+3. Each test case must be able to pass compilation. Always use correct and specific import statements (do not import *) for any class used \
+but not defined in the test case. If you are referring to a random or mismatch third-party class, method, or field, use names such as \
 "com.example.AnotherClass", method "anotherMethod" or field "anotherField" with proper import statements and remember to avoid dependency conflits.\
 4. Ensure that each case covering the same checking scenario only occurs once and that all necessary scenarios are covered. Specifically, \
 for regex expressions that have multiple options like "(a|b|c|d)", just use one or two of them to make the test suite concise.   

@@ -49,6 +49,7 @@ class TestCompiler:
 
         # indicate the mock lib code is generated only by tree-sitter
         self.ts_gen_flag = False
+        self.need_third_party_lib = False
 
     def compile_lib_code(self) -> tuple[bool, str]:
         """
@@ -98,8 +99,8 @@ class TestCompiler:
         create_dir_with_path(self.target_dir, cleanup=True)
         try:
             cmd_list = [self.javac_executable, "-encoding", "utf-8", "-d", str(self.target_dir)]
-            if self.lib_dir.is_dir():
-                cmd_list += ["-cp", str(self.mock_jar_file)]
+            # if self.lib_dir.is_dir():
+            #     cmd_list += ["-cp", str(self.mock_jar_file)]
             cmd_list += self.test_filepaths_str
             subprocess.run(cmd_list, capture_output=True, text=True, check=True)
             logger.info(f"Successfully compile all test cases for {self.dsl_id}.")
@@ -157,27 +158,24 @@ class TestCompiler:
         else:
             if only_use_llm:
                 # generate mock lib code only with LLM
-                mock_status, lib_code_res = llm_mocker.gen_mock_lib_code_llm()
+                lib_code_res = llm_mocker.gen_mock_lib_code_llm()
+                if self.need_third_party_lib and not lib_code_res:
+                    logger.warning(f"--> Expected to get mock lib code but got none!")
+                    lib_code_res = llm_mocker.gen_mock_lib_code_llm_retry(retry_max_attempts=1)
+                    if not lib_code_res:
+                        return False
             else:
-                # generate mock lib code (default: tree-sitter -> LLM)
-                mock_status, lib_code_res = ts_mocker.gen_mock_lib_code_ts()
-                if not mock_status:
-                    logger.warning(f"--> [Detected Tree-sitter GenMock Failure] Retrying with LLM...")
-                    mock_status, lib_code_res = llm_mocker.gen_mock_lib_code_llm()
-                else:
-                    self.ts_gen_flag = True
+                # generate mock lib code (initial: tree-sitter -> LLM)
+                lib_code_res = ts_mocker.gen_mock_lib_code_ts()
+                self.ts_gen_flag = True
+                self.need_third_party_lib = True if lib_code_res else False
 
             # [Case 1] no need to generate mock lib code
-            if mock_status and not lib_code_res:
+            if not self.need_third_party_lib:
                 logger.info(f"No mock lib code is needed for {self.dsl_id}")
                 return True
 
-            # [Case 2] LLM generation failed (no mock lib code responses but expected to have)
-            if not mock_status:
-                logger.warning(f"--> Failed to generate mock lib code for {self.dsl_id} using {strategy}!")
-                return False
-
-            # [Case 3] Handle when we successfully extract mock lib code, which also means tests need third-party lib
+            # [Case 2] Handle when we successfully extract mock lib code, which also means tests need third-party lib
             self.install_lib_code(lib_code_res)
 
         lib_compile_status, error_msg = self.compile_lib_code()
@@ -331,7 +329,8 @@ class TestCompiler:
 
 if __name__ == "__main__":
     # Test the gen_mock_jar function
-    dsl_id = "ONLINE_AG_CmdInjection"
+    dsl_id = "test_tmp"
     test_compiler = TestCompiler(dsl_id)
+    test_compiler.gen_mock_jar()
     _, msg = test_compiler.compile_test_code()
     # print(f"Compile lib code error msg: {msg}")
