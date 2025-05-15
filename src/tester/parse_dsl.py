@@ -74,9 +74,9 @@ def preprocess_dsl(
     :return: cleaned dsl, Decomposed dsls [[node1_sub_1, node1_sub_2], [node2_sub_1, node2_sub_2] ... ]
     """
     if init_transform:
-        logger.info("==> Pasring in the opposite setting")
+        logger.info("==> Preprocess DSL in the opposite setting")
     else:
-        logger.info("==> Pasring in the normal setting")
+        logger.info("==> Preprocess DSL in the normal setting")
 
     # DSL split -- start from statements -- KirinEntryVisitor
     full_parser = KirinAntlrParser(dsl_text)
@@ -129,7 +129,6 @@ def preprocess_dsl(
                 logger.info(f"Formatting [#{i + 1}] Node DSL - (#{j+1}) Sub DSL~")
                 sub_dsl_result[i][j] = KirinRunner.format_dsl_text(sub_dsl)
 
-    logger.info("==> DSL preprocessing done!")
     return DslPrepResDict(
         node_dsl_list=node_dsl_list,
         sub_dsl_collection=sub_dsl_result,
@@ -143,8 +142,7 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path) -> None:
     :param dsl_dir: dsl directory, which is the kirin_ws/{dsl_id}/dsl directory
     :return: None, the dsl preprocess result will be saved to dsl_dir
     """
-    if not dsl_dir.is_dir():
-        raise ValueError(f"--> DSL directory {dsl_dir} not found!")
+    assert dsl_dir.is_dir(), f"--> DSL directory {dsl_dir} not found!"
 
     for i, node_dsl in enumerate(dsl_prep_res["node_dsl_list"]):
         i += 1
@@ -160,7 +158,7 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path) -> None:
             sub_dsl_path = sub_dsl_dir / f"DSL_N{i}_S{j}.kirin"
             sub_dsl_path.write_text(sub_dsl, encoding="utf-8")
 
-    logger.info(f"==> DSL preprocess result saved to {dsl_dir}")
+    logger.info(f"DSL preprocess result saved to {dsl_dir}")
 
 
 if __name__ == "__main__":

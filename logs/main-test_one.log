@@ -1,0 +1,91 @@
+2025-05-15 00:31:20 - main.py - main - [INFO] ====== Processing DSL #1/1 ======
+2025-05-15 00:31:20 - main.py - initialize_dsl_ws - [INFO] Creating dsl workspace at kirin_ws\ONLINE_Annotation_Pattern_Error
+2025-05-15 00:31:20 - parse_dsl.py - preprocess_dsl - [INFO] ==> Preprocess DSL in the normal setting
+2025-05-15 00:31:21 - parse_dsl.py - preprocess_dsl - [INFO] Multi nodes detected: node count is 1.
+2025-05-15 00:31:21 - parse_dsl.py - preprocess_dsl - [INFO] [#1] Node DSL parsing starts...
+2025-05-15 00:31:21 - parse_dsl.py - preprocess_dsl - [INFO] [#1] Node DSL transformation done~
+2025-05-15 00:31:21 - _antlr.py - visitCondExpr - [INFO] Found AND condition on line 2, column 1
+2025-05-15 00:31:21 - _antlr.py - visitCondExpr - [INFO] Found AND condition on line 5, column 3
+2025-05-15 00:31:21 - parse_dsl.py - preprocess_dsl - [INFO] [#1] Node DSL decomposition done, sub dsl count is 1~
+2025-05-15 00:31:21 - parse_dsl.py - preprocess_dsl - [INFO] Formatting [#1] Node DSL~
+2025-05-15 00:31:21 - _kirin.py - format_dsl_file - [INFO] -- Dsl formatting done.
+2025-05-15 00:31:21 - parse_dsl.py - preprocess_dsl - [INFO] Formatting [#1] Node DSL - (#1) Sub DSL~
+2025-05-15 00:31:21 - _kirin.py - format_dsl_file - [INFO] -- Dsl formatting done.
+2025-05-15 00:31:21 - parse_dsl.py - save_dsl_prep_res - [INFO] DSL preprocess result saved to kirin_ws\ONLINE_Annotation_Pattern_Error\dsl
+2025-05-15 00:31:21 - gen_test.py - gen_pos_tests - [INFO] ==> Generating positive test cases
+2025-05-15 00:31:37 - _llm.py - query_llm_with_msg - [INFO] LLM Timestamp Record: 15 seconds
+2025-05-15 00:31:37 - gen_test.py - fix_syntax_error - [INFO] All test cases are valid, skip syntax errors fixing.
+2025-05-15 00:31:37 - gen_test.py - save_test_info - [INFO] Saving 5 positive test cases...
+2025-05-15 00:31:37 - gen_test.py - save_test_info - [INFO] Saving 0 negative test cases...
+2025-05-15 00:31:37 - gen_test.py - save_test_info - [INFO] Saving 0 unknown test cases...
+2025-05-15 00:31:37 - gen_test.py - save_test_info - [INFO] All test cases saved to kirin_ws\ONLINE_Annotation_Pattern_Error\test
+2025-05-15 00:31:37 - compile_test.py - compile_tests - [INFO] ==> Compiling test cases for ONLINE_Annotation_Pattern_Error...
+2025-05-15 00:31:37 - compile_test.py - compile_tests - [INFO] Test cases depend on third-party libraries.
+2025-05-15 00:31:37 - compile_test.py - gen_mock_jar - [INFO] ==> Generating mock lib jar for ONLINE_Annotation_Pattern_Error using tree-sitter & LLM
+2025-05-15 00:31:37 - mock_lib_ts.py - gen_mock_lib_code_ts - [INFO] Generating mock lib for 5 tests in kirin_ws\ONLINE_Annotation_Pattern_Error\test with tree-sitter...
+2025-05-15 00:31:37 - mock_lib_ts.py - parse_directory - [INFO] Parsing lib code for file: kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest1.java
+2025-05-15 00:31:37 - mock_lib_ts.py - parse_directory - [INFO] Parsing lib code for file: kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest2.java
+2025-05-15 00:31:37 - mock_lib_ts.py - parse_directory - [INFO] Parsing lib code for file: kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest3.java
+2025-05-15 00:31:37 - mock_lib_ts.py - parse_directory - [INFO] Parsing lib code for file: kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest4.java
+2025-05-15 00:31:37 - mock_lib_ts.py - parse_directory - [INFO] Parsing lib code for file: kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest5.java
+2025-05-15 00:31:37 - mock_lib_ts.py - gen_mock_lib_code_ts - [INFO] Lib Parser result for kirin_ws\ONLINE_Annotation_Pattern_Error\test: 
+{}
+2025-05-15 00:31:37 - mock_lib_ts.py - gen_mock_lib_code_ts - [INFO] Generated 1 third-party classes: 
+javax.validation.constraints.Pattern.
+2025-05-15 00:31:37 - compile_test.py - install_lib_code - [INFO] Installed mock lib code for javax.validation.constraints.Pattern in kirin_ws\ONLINE_Annotation_Pattern_Error\_mock_tmp\javax\validation\constraints\Pattern.java.
+2025-05-15 00:31:45 - compile_test.py - compile_lib_code - [INFO] Successfully build mock JAR at kirin_ws\ONLINE_Annotation_Pattern_Error\lib\mock.jar
+2025-05-15 00:31:46 - compile_test.py - compile_test_code - [WARNING] --> Failed to compile test cases for ONLINE_Annotation_Pattern_Error: 
+Command '['C:/Users/NonPC/AppData/Roaming/Code/User/globalStorage/huaweicloud.codenavi/assets/jdk17/jdk-17.0.10+7\\bin\\javac.exe', '-encoding', 'utf-8', '-d', 'kirin_ws\\ONLINE_Annotation_Pattern_Error\\target', '-cp', 'kirin_ws\\ONLINE_Annotation_Pattern_Error\\lib\\mock.jar', 'kirin_ws\\ONLINE_Annotation_Pattern_Error\\test\\PositiveTest1.java', 'kirin_ws\\ONLINE_Annotation_Pattern_Error\\test\\PositiveTest2.java', 'kirin_ws\\ONLINE_Annotation_Pattern_Error\\test\\PositiveTest3.java', 'kirin_ws\\ONLINE_Annotation_Pattern_Error\\test\\PositiveTest4.java', 'kirin_ws\\ONLINE_Annotation_Pattern_Error\\test\\PositiveTest5.java']' returned non-zero exit status 1.
+2025-05-15 00:31:46 - compile_test.py - compile_test_code - [WARNING] Std error: 
+kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest1.java:4: error: incompatible types: Pattern cannot be converted to Annotation
+    @Pattern(regexp = "^abc.def$") // Contains unescaped dot not in character class
+     ^
+kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest2.java:4: error: incompatible types: Pattern cannot be converted to Annotation
+    @Pattern(regexp = "start.*middle.end") // Contains unescaped dot not in character class
+     ^
+kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest3.java:4: error: incompatible types: Pattern cannot be converted to Annotation
+    @Pattern(regexp = "a.b[cd]") // Contains unescaped dot before character class
+     ^
+kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest4.java:4: error: incompatible types: Pattern cannot be converted to Annotation
+    @Pattern(regexp = "[ab].cd") // Contains unescaped dot after character class
+     ^
+kirin_ws\ONLINE_Annotation_Pattern_Error\test\PositiveTest5.java:4: error: incompatible types: Pattern cannot be converted to Annotation
+    @Pattern(regexp = "\\.[abc]") // Contains escaped dot in character class (shouldn't match but included for completeness)
+     ^
+5 errors
+
+2025-05-15 00:31:46 - compile_test.py - compile_tests - [WARNING] --> [Detected Tree-sitter CompileTest Failure] Retrying mocking with LLM...
+2025-05-15 00:31:46 - compile_test.py - gen_mock_jar - [INFO] ==> Generating mock lib jar for ONLINE_Annotation_Pattern_Error using LLM
+2025-05-15 00:31:46 - mock_lib_llm.py - gen_mock_lib_code_llm - [INFO] Generating mock lib for 5 tests in kirin_ws\ONLINE_Annotation_Pattern_Error\test using LLM...
+2025-05-15 00:31:54 - _llm.py - query_llm_with_msg - [INFO] LLM Timestamp Record: 7 seconds
+2025-05-15 00:31:54 - mock_lib_llm.py - gen_mock_lib_code_llm - [INFO] Generated 1 third-party classes: 
+javax.validation.constraints.Pattern.
+2025-05-15 00:31:54 - compile_test.py - install_lib_code - [INFO] Installed mock lib code for javax.validation.constraints.Pattern in kirin_ws\ONLINE_Annotation_Pattern_Error\_mock_tmp\javax\validation\constraints\Pattern.java.
+2025-05-15 00:32:02 - compile_test.py - compile_lib_code - [INFO] Successfully build mock JAR at kirin_ws\ONLINE_Annotation_Pattern_Error\lib\mock.jar
+2025-05-15 00:32:02 - compile_test.py - compile_test_code - [INFO] Successfully compile all test cases for ONLINE_Annotation_Pattern_Error.
+2025-05-15 00:32:02 - compile_test.py - compile_tests - [INFO] Successfully compiled all test cases for ONLINE_Annotation_Pattern_Error!
+2025-05-15 00:32:02 - validate_test.py - validate_tests - [INFO] ==> Validating DSL: ONLINE_Annotation_Pattern_Error
+2025-05-15 00:32:02 - _kirin.py - execute_kirin_dsl - [INFO] Executing dsl_kirin analysis with dsl_dir: kirin_ws\ONLINE_Annotation_Pattern_Error\dsl
+2025-05-15 00:32:02 - _kirin.py - execute_kirin_dsl - [INFO] Loading third resources from kirin_ws\ONLINE_Annotation_Pattern_Error\lib
+2025-05-15 00:32:04 - _kirin.py - execute_kirin_dsl - [INFO] Kirin executor report has been saved to kirin_ws\ONLINE_Annotation_Pattern_Error\report
+2025-05-15 00:32:04 - validate_test.py - parse_xml_results - [INFO] ==> Validation Result:
+=> Checker: DSL_N1
+	reprted: 
+	passed: PositiveTest1.java, PositiveTest2.java, PositiveTest3.java, PositiveTest4.java, PositiveTest5.java
+
+=> Checker: DSL_N1_S1
+	reprted: 
+	passed: PositiveTest1.java, PositiveTest2.java, PositiveTest3.java, PositiveTest4.java, PositiveTest5.java
+
+
+2025-05-15 00:32:04 - main.py - main - [INFO] DSL #1 validation result saved to data\test\test_one_result.json
+2025-05-15 00:32:04 - _llm.py - log_single_record - [INFO] 
+****************************************
+==> Single LLM API Call Record (#2):
+('gen_pos_tests', 15), ('gen_mock_lib_code', 7)
+****************************************
+2025-05-15 00:32:04 - _llm.py - log_all_record - [INFO] 
+****************************************
+==> All LLM API Call Record (#2):
+2
+****************************************

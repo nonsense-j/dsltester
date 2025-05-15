@@ -2,13 +2,16 @@
 helper functions
 """
 
-import shutil, re
+import shutil, re, json
 from pathlib import Path
 from .types import DslInfoDict, DslPrepResDict, TestInfoDict
 from ._logger import logger
 
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Parser
+
+# list of builtin package prefixes
+JAVA_BUILTIN_PKG_PREFIXES = []
 
 
 def create_dir_with_path(dir_path: Path, cleanup=True):
@@ -50,6 +53,17 @@ def read_file(file_path: Path) -> str:
     return content
 
 
+def load_builtin_pkg_prefixes():
+    """
+    load builtin package prefixes from json file
+    :return: list of builtin package prefixes
+    """
+    global JAVA_BUILTIN_PKG_PREFIXES
+    if not JAVA_BUILTIN_PKG_PREFIXES:
+        with open("src/resources/java17_builtin_pkg.json", "r") as f:
+            JAVA_BUILTIN_PKG_PREFIXES = json.load(f)
+
+
 def is_third_class(class_fqn: str) -> bool:
     """
     check if the class name is a third class
@@ -57,17 +71,10 @@ def is_third_class(class_fqn: str) -> bool:
     :return: True if the class name is a third class
     """
     # look for: https://docs.oracle.com/en/java/javase/17/docs/api/allpackages-index.html
-    builtin_pkg_prefixes = [
-        "com.sun",
-        "java",
-        "javax",
-        "jdk",
-        "netscape.javascript",
-        "org.ietf.jgss",
-        "org.w3c.dom",
-        "org.xml.sax",
-    ]
-    return not any([class_fqn.startswith(prefix) for prefix in builtin_pkg_prefixes])
+    # saved in src/resources/java17_builtin_pkg.json -> preload in JAVA_BUILTIN_PKG_PREFIXES
+    if not JAVA_BUILTIN_PKG_PREFIXES:
+        load_builtin_pkg_prefixes()
+    return not any([class_fqn.startswith(prefix) for prefix in JAVA_BUILTIN_PKG_PREFIXES])
 
 
 def is_standard_class(class_fqn: str) -> bool:
@@ -81,6 +88,18 @@ def is_standard_class(class_fqn: str) -> bool:
         return False
     # pkg name must be lowercase, cls name must start with upper case
     return pkg_name.lower() and cls_name[0].isupper()
+
+
+def extract_missing_pkgs(compile_error_msg: str) -> list[str]:
+    """
+    Extract the missing packages from the compile error message.
+    :param compile_error_msg: The compile error message.
+    :return: A list of missing packages.
+    """
+    unrecog_pkg_pattern = re.compile(r"error: package ([\w\.]+) does not exist")
+    missing_pkgs = unrecog_pkg_pattern.findall(compile_error_msg)
+
+    return list(set(missing_pkgs))
 
 
 def save_dsl_prep_result(dsl_prep_result: DslPrepResDict, save_dir: Path):
@@ -172,7 +191,7 @@ def parse_lib_code(llm_result: str) -> dict[str, str]:
     for lib_code in llm_parse_res:
         class_fqn = lib_code[0].strip()
         lib_code = lib_code[1]
-        if is_third_class(class_fqn) and not lib_code.strip():
+        if is_third_class(class_fqn) and lib_code.strip():
             # check for duplicate class names
             assert class_fqn not in lib_res, f"Duplicate class name {class_fqn} found in the mock code!"
             lib_res[class_fqn] = lib_code
@@ -202,20 +221,42 @@ def validate_syntax(java_code_list: list[str]) -> list[bool]:
 
 
 if __name__ == "__main__":
-    code_list = [
-        """
-        public class PositiveTest {
-            public static void main(String[] args) {
-                System.out.println("Hello, World!");
-            }
-        }
-        """,
-        """
-        public class Positivetest {
-            public static void main(String[] args) {
-                System.out.println("Hello, World);
-            }
-        }
-        """,
-    ]
-    print(create_test_info(code_list))
+    # code_list = [
+    #     """
+    #     public class PositiveTest {
+    #         public static void main(String[] args) {
+    #             System.out.println("Hello, World!");
+    #         }
+    #     }
+    #     """,
+    #     """
+    #     public class Positivetest {
+    #         public static void main(String[] args) {
+    #             System.out.println("Hello, World);
+    #         }
+    #     }
+    #     """,
+    # ]
+    # print(create_test_info(code_list))
+    llm_output = """
+<lib-javax.validation.constraints.Pattern>
+package javax.validation.constraints;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Documented
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER, ElementType.ANNOTATION_TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Pattern {
+    String regexp() default "";
+    String message() default "";
+    Class<?>[] groups() default {};
+    Class<?>[] payload() default {};
+}
+</lib-javax.validation.constraints.Pattern>
+"""
+    print(parse_lib_code(llm_output))

@@ -97,7 +97,7 @@ class KirinRunner:
             logger.info(f"Kirin executor report has been saved to {report_dir}")
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"--> Kirin executor failed with error: {e}")
+            logger.error(f"--> Kirin executor failed with error: \n{e}")
             logger.error(f"--> Kirin executor error output: {e.stderr}")
 
         finally:
@@ -149,7 +149,7 @@ class KirinRunner:
 
         except subprocess.CalledProcessError as e:
             logger.error(f"--> Kirin formatter error for {input_path}: \n{input_path.read_text(encoding='utf-8')}")
-            logger.error(f"--> Kirin format failed with error: {e}")
+            logger.error(f"--> Kirin format failed with error: \n{e}")
             logger.error(f"--> Kirin format error output: {e.stderr}")
             return ""
 

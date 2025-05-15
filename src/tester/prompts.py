@@ -71,15 +71,15 @@ PROMPTS[
     "gen_mock_lib_code"
 ] = """\
 ## General Goal
-Write mock Java classes for third-party libraries (excluding built-in ones) used in a project, based on provided code snippets. \
-The mocks must replicate exact method signatures and field declarations referenced in the snippets, with minimum method bodies, default return \
+Write mock Java classes for third-party libraries used in a project, based on provided code snippets. Note that the project fail to compile due \
+to missing third-party dependencies, so do generate the mock third-party classes for the code snippets. The mocks must replicate exact method \
+signatures and field declarations referenced in the snippets, with minimum method bodies, default return \
 and field values (e.g., null, 0, false, '', etc.). Prioritize using Object as argument/return/field types when possible to simplify dependencies. 
 
 ### Output Format
-Output the complete Java files (with correct pacakge declaration) for each mock library, each wrapped in "<lib-{{calss_fqn}}>" \
-and "</lib-{{class_fqn}}>". {{class_fqn}} is the corresponding fully qualified class name of the mock library, e.g., output file code\
-of the class "com.example.AnotherClass" should be warpped in "<lib-com.example.AnotherClass>" and "</lib-com.example.AnotherClass>". \
-If no third-party libraries are used in the code snippets, just output "Pass: no third-party libraries are used".
+Directly Output the complete Java files (with correct pacakge declaration) for each mock library, each wrapped in "<lib-{{calss_fqn}}>" and \
+"</lib-{{class_fqn}}>" without detailed explanations. {{class_fqn}} is the corresponding fully qualified class name of the mock library, e.g., \
+output code of the class "com.example.AnotherClass" should be wrapped in "<lib-com.example.AnotherClass>" and "</lib-com.example.AnotherClass>". 
 
 ### Input
 Here are the aggregated code snippets for references:
@@ -87,6 +87,7 @@ Here are the aggregated code snippets for references:
 {code_snippets}
 </input_code_snippets>
 
+{additional_info}
 ## Output Mock Java Classes
 """
 

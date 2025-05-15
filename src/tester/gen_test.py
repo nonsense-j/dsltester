@@ -10,7 +10,7 @@ from src.utils._llm import LLMWrapper
 from src.utils._helper import validate_syntax, create_dir_with_path, create_test_info
 
 
-def fix_syntax_error(test_list: list[str], max_attempts=3) -> list[str]:
+def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
     """
     Fix the syntax error in the test cases.
     Args:
@@ -45,6 +45,7 @@ def fix_syntax_error(test_list: list[str], max_attempts=3) -> list[str]:
         return final_test_list[:-1]
 
     while attempts < max_attempts and len(input_test_list) > 0:
+        logger.warning(f"--> [Detected Syntax Error] Attempt {attempts + 1}/{max_attempts} to fix syntax errors...")
         # construct the user prompt
         wrapped_java_code = "\n\n".join([f"```java\n{test_code}\n```" for test_code in input_test_list])
         user_prompt = PROMPTS["fix_syntax_error"].format(
@@ -105,7 +106,7 @@ def gen_pos_tests(dsl_text: str, add_info: bool = False) -> TestInfoDict:
     # construct the user prompt
     additional_info = ""
     if add_info:
-        additional_info_md = Path("src/md/additional_info.md")
+        additional_info_md = Path("src/resources/additional_info.md")
         additional_info = additional_info_md.read_text(encoding="utf-8")
 
     sys_prompt = SYS_PROMPTS["gen_tests"]
@@ -134,8 +135,7 @@ def save_test_info(test_info: TestInfoDict, test_dir: Path) -> None:
         test_info (TestInfoDict): The test information dictionary.
         test_dir (Path): The test directory path.
     """
-    if not test_dir.is_dir():
-        raise ValueError(f"--> Test directory {test_dir} not found!")
+    assert test_dir.is_dir(), f"--> Test directory {test_dir} not found!"
     create_dir_with_path(test_dir, cleanup=True)
 
     for label, sub_test_info in test_info.items():

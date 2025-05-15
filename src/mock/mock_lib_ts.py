@@ -556,7 +556,7 @@ class MockLibGenTS:
         lib_code_map = jd_parser.gen_third_party_lib_code()
 
         if not lib_code_map:
-            logger.info(f"No third-party dependencies detected by tree-sitter.")
+            logger.info(f"No third-party dependencies output by tree-sitter.")
         else:
             logger.info(f"Generated {len(lib_code_map)} third-party classes: \n{', '.join(lib_code_map.keys())}.")
         return lib_code_map

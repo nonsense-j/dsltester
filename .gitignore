@@ -10,9 +10,6 @@ __pycache__/
 # config
 src/utils/config.py
 
-# llm
-src/utils/_llm.py
-
 # jupyter notebook
 *.ipynb
 

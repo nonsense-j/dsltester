@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
 
-from src.utils._logger import logger
+from src.utils._llm import LLMWrapper
 from src.utils.types import DslInfoDict
 from src.utils._helper import create_dir_with_path
+from src.utils._logger import logger, set_log_file
 from src.tester.parse_dsl import preprocess_dsl, save_dsl_prep_res
 from src.tester.gen_test import gen_pos_tests, save_test_info
 from src.tester.compile_test import TestCompiler
@@ -62,11 +63,16 @@ def main():
     with open(dataset_path, "r", encoding="utf-8") as f:
         dsl_info_list: list[DslInfoDict] = json.load(f)
 
+    # set the log path
+    main_log_path = Path("logs") / f"main-{dataset_path.stem}.log"
+    set_log_file(main_log_path)
+
     res_path = dataset_path.parent / f"{dataset_path.stem}_result.json"
     final_result = []
-
     for i, dsl_info in enumerate(dsl_info_list):
         logger.info(f"====== Processing DSL #{i + 1}/{len(dsl_info_list)} ======")
+        # reset the LLM API call record for single data item
+        LLMWrapper.reset_single_record()
         dsl_id = dsl_info["id"]
 
         # initialize DSL workspace
@@ -74,7 +80,6 @@ def main():
 
         # preprocess the DSL and save the result
         dsl_ws = Path("kirin_ws") / dsl_id
-        sub_dsl_dir = dsl_ws / "dsl"
         dsl_prep_res = preprocess_dsl(dsl_info["dsl"])
         save_dsl_prep_res(dsl_prep_res, dsl_ws / "dsl")
 
@@ -91,7 +96,13 @@ def main():
 
         # try to compile the test cases (mock lib + compile lib + compile test)
         test_compiler = TestCompiler(dsl_id)
-        test_compile_status = test_compiler.compile_tests()
+        # TODO)) if status is False
+        try:
+            test_compile_status = test_compiler.compile_tests()
+            assert test_compile_status, f"Compilation failed for DSL {dsl_id}."
+        except Exception as e:
+            logger.error(f"Compilation fails, clear mock_lib directories...")
+            test_compiler.clear_mock_lib()
 
         # validate tests
         res = validate_tests(dsl_id)
@@ -100,6 +111,14 @@ def main():
         with open(res_path, "w", encoding="utf-8") as f:
             json.dump(final_result, f, indent=4, ensure_ascii=False, sort_keys=True)
         logger.info(f"DSL #{i+1} validation result saved to {res_path}")
+
+        LLMWrapper.log_single_record()
+
+    # save LLM API call record
+    LLMWrapper.log_all_record()
+    llm_record_path = Path("logs") / f"main-{dataset_path.stem}-llm-record.json"
+    with open(llm_record_path, "w", encoding="utf-8") as f:
+        json.dump(LLMWrapper.all_call_chains, f, indent=4, ensure_ascii=False, sort_keys=True)
 
 
 if __name__ == "__main__":
