@@ -2,6 +2,7 @@ openai
 antlr4-python3-runtime
 tree_sitter
 tree-sitter-java
+dotenv
 
 # jupyter notebook
 tqdm

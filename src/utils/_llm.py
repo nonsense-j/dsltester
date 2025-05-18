@@ -12,8 +12,10 @@ def query_llm_v1(messages: list, model_name: str = OPENAI_MODEL_NAME) -> str:
     """
     assert model_name, f"Model name {model_name} not provided"
 
-    client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY, temperature=0.7, stream=False)
-    chat_completion = client.chat.completions.create(model=model_name, messages=messages)
+    client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
+    chat_completion = client.chat.completions.create(model=model_name, messages=messages, temperature=0.7, stream=False)
+    # prompt_tokens = chat_completion.usage.prompt_tokens
+    # completion_tokens = chat_completion.usage.completion_tokens
     response = chat_completion.choices[0].message.content
 
     if "QWQ" in model_name or "Qwen" in model_name:
@@ -111,7 +113,6 @@ class LLMWrapper:
 if __name__ == "__main__":
     # Test the query_llm function
     user_prompt = "Who are you?"
-    response = LLMWrapper.query_llm(user_prompt)
     response = LLMWrapper.query_llm(user_prompt)
     print(response)
     LLMWrapper.log_single_record()

@@ -9,6 +9,7 @@ __pycache__/
 
 # config
 src/utils/config.py
+src/.env
 
 # jupyter notebook
 *.ipynb
