@@ -122,10 +122,11 @@ PROMPTS[
     "fix_test_compile_with_lib"
 ] = """\
 ## General Goal
-You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files.\
-As inputs, I will provide you with a list of the Java code files, their mocked third-party library code as dependencies and the error message.\
-When compiling these Java files with the dependency libs, the compiler reports errors. You need to fix these errors by modifying the Java files \
-and the library code if necessary. Keep the original code identifier naming, structure and logic as much as possible. \
+You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files \
+(warnings can be ignored). As inputs, I will provide you with a list of the Java code files, their mocked third-party library code as \
+dependencies and the error message. When compiling these Java files with the dependency libs, the compiler reports errors. \
+You need to fix these errors by modifying the Java files and the library code if necessary. \
+Keep the original code identifier naming, structure and logic as much as possible. \
 
 ### Input and Output Format
 For both input and output, each Java code file is wrapped in "<java_file>" and "</java_file>" and each library code is wrapped in \
@@ -147,8 +148,8 @@ PROMPTS[
     "fix_test_compile_wo_lib"
 ] = """\
 ## General Goal
-You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files.\
-As inputs, I will provide you with a list of the Java code files and the compilation error message.\
+You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files \
+(warnings can be ignored). As inputs, I will provide you with a list of the Java code files and the compilation error message.
 
 ### Input and Output Format
 For both input and output, each Java code file must be wrapped in "<java_file>" and "</java_file>". \

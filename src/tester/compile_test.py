@@ -65,7 +65,8 @@ class TestCompiler:
             lib_filepaths = list(self.mock_tmp_dir.rglob("*.java"))
             lib_filepaths_str = [str(lib_file) for lib_file in lib_filepaths]
             javac_res = subprocess.run(
-                [self.javac_executable, "-encoding", "utf-8", "-d", str(self.mock_tmp_dir)] + lib_filepaths_str,
+                [self.javac_executable, "-encoding", "utf-8", "-nowarn", "-d", str(self.mock_tmp_dir)]
+                + lib_filepaths_str,
                 capture_output=True,
                 text=True,
                 check=True,
@@ -101,7 +102,7 @@ class TestCompiler:
         # Compile the test cases
         create_dir_with_path(self.target_dir, cleanup=True)
         try:
-            cmd_list = [self.javac_executable, "-encoding", "utf-8", "-d", str(self.target_dir)]
+            cmd_list = [self.javac_executable, "-encoding", "utf-8", "-nowarn", "-d", str(self.target_dir)]
             if self.need_third_party_lib:
                 logger.info("Lib detected, compiling tests with third-party lib jar...")
                 cmd_list += ["-cp", str(self.mock_jar_file)]

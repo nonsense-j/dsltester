@@ -113,7 +113,7 @@ def main():
         logger.info(f"DSL #{i+1} validation result saved to {res_path}")
 
         LLMWrapper.log_single_record()
-        single_record_path = Path("logs") / f"llm-record.json"
+        single_record_path = dsl_ws / f"llm-record.json"
         with open(single_record_path, "w", encoding="utf-8") as f:
             json.dump(LLMWrapper.single_call_chain, f, indent=4, ensure_ascii=False)
 
