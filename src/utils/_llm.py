@@ -1,28 +1,30 @@
 import time
 from openai import OpenAI
+from openai.types.completion_usage import CompletionUsage
 from typing import Optional
 
 from .config import OPENAI_BASE_URL, OPENAI_MODEL_NAME, OPENAI_API_KEY
 from ._logger import logger
 
 
-def query_llm_v1(messages: list, model_name: str = OPENAI_MODEL_NAME) -> str:
+def query_llm_v1(messages: list, model_name: str = OPENAI_MODEL_NAME) -> tuple[str, Optional[CompletionUsage]]:
     """
     Query LLM with openai API
+    returns:
+        - response: The response text from the LLM.
+        - usage: The usage information of the API call.
     """
     assert model_name, f"Model name {model_name} not provided"
 
     client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
     chat_completion = client.chat.completions.create(model=model_name, messages=messages, temperature=0.7, stream=False)
-    # prompt_tokens = chat_completion.usage.prompt_tokens
-    # completion_tokens = chat_completion.usage.completion_tokens
     response = chat_completion.choices[0].message.content
 
     if "QWQ" in model_name or "Qwen" in model_name:
         # skip thinking
         response = response.split("</think>")[-1].strip()
 
-    return response
+    return response, chat_completion.usage
 
 
 class LLMWrapper:
@@ -30,9 +32,9 @@ class LLMWrapper:
     A wrapper class for LLM API calls.
     """
 
-    # record the number of API calls and timestamps
-    single_call_chain: list[tuple[str, int]] = []
-    all_call_chains: list[list[tuple[str, int]]] = []
+    # record: (api_type, time_cost, prompt_tokens, completion_tokens)
+    single_call_chain: list[list[str]] = []
+    all_call_chains: list[list[list[str]]] = []
 
     @classmethod
     def reset_all_record(cls) -> None:
@@ -55,15 +57,17 @@ class LLMWrapper:
         [Entrance] Query LLM with user prompt and system prompt
         """
         start_time = time.time()
-        res = query_llm_v1(messages)
+        res, usage = query_llm_v1(messages)
         end_time = time.time()
         time_cost = int(end_time - start_time)
-        logger.info(f"LLM Timestamp Record: {time_cost} seconds")
+        prompt_tokens = usage.prompt_tokens if usage else 0
+        completion_tokens = usage.completion_tokens if usage else 0
+        logger.info(f"LLM Inference Record: {time_cost} seconds, ({prompt_tokens}+{completion_tokens}) tokens")
 
         # update LLM record
         if not cls.single_call_chain:
             cls.all_call_chains.append([])
-        call_record = (query_type, time_cost)
+        call_record = [query_type, f"{time_cost} s", f"{prompt_tokens} it", f"{completion_tokens} ot"]
         cls.single_call_chain.append(call_record)
         cls.all_call_chains[-1].append(call_record)
 
@@ -112,7 +116,7 @@ class LLMWrapper:
 
 if __name__ == "__main__":
     # Test the query_llm function
-    user_prompt = "Who are you?"
+    user_prompt = "How to mutate code to find bugs in SAST tools?"
     response = LLMWrapper.query_llm(user_prompt)
     print(response)
     LLMWrapper.log_single_record()
