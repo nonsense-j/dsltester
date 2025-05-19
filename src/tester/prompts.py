@@ -50,8 +50,8 @@ descriptions (if exists), which describes the suggested proper behaviors while t
 that can be reported by the checker.
 2. Each test case should keep clear, simple and minimal, excluding any code that is irrelevant to the checker. Include simple, necessary comments \
 to clarify the purpose of each test case and show their differences. 
-3. Each test case must be able to pass compilation. Every used symbol should either be defined in the test case itself or correctly imported.\
-Remember not to import unused classes or packages.
+3. Each test case must be able to pass compilation. Every used symbol should either be defined in the test case itself or correctly imported. \
+Do not import unused classes or packages.
 "com.example.AnotherClass", method "anotherMethod" or field "anotherField" with proper import statements and remember to avoid dependency conflits.\
 4. Ensure that each case covering the same checking scenario only occurs once and that all necessary scenarios are covered. Specifically, \
 for regex expressions that have multiple options like "(a|b|c|d)", just use one or two of them to make the test suite concise.   

@@ -325,18 +325,30 @@ class JavaDependencyParser:
         if method_call_node.child_by_field_name("object") is None:
             return
 
-        obj_name = method_call_node.child_by_field_name("object").text.decode("utf-8")
-        # static method for scoped classes
-        if obj_name in self.scoped_class_info:
-            class_fqn = self.scoped_class_info[obj_name]
-            method_sig = self._construct_method_signature(method_call_node, is_static=True)
-            self._collect_usage(class_fqn, method_sig, "method")
+        obj_node = method_call_node.child_by_field_name("object")
+        obj_type_node = obj_node.child_by_field_name("type")
+        if obj_type_node:
+            # object as class constructor: new AnotherClass().invokeMethod()
+            class_name = obj_type_node.text.decode("utf-8")
+            if class_name in self.scoped_class_info:
+                class_fqn = self.scoped_class_info[class_name]
+                method_sig = self._construct_method_signature(method_call_node, is_static=False)
+                self._collect_usage(class_fqn, method_sig, "method")
+            return
+        else:
+            # object as identifier: inst.invokeMethod() or AnotherClass.invokeMethod()
+            obj_name = obj_node.text.decode("utf-8")
+            # static method for scoped classes
+            if obj_name in self.scoped_class_info:
+                class_fqn = self.scoped_class_info[obj_name]
+                method_sig = self._construct_method_signature(method_call_node, is_static=True)
+                self._collect_usage(class_fqn, method_sig, "method")
 
-        # instance method for scoped classes
-        elif obj_name in self.type_info and self.type_info[obj_name] in self.scoped_class_info:
-            class_fqn = self.scoped_class_info[self.type_info[obj_name]]
-            method_sig = self._construct_method_signature(method_call_node, is_static=False)
-            self._collect_usage(class_fqn, method_sig, "method")
+            # instance method for scoped classes
+            elif obj_name in self.type_info and self.type_info[obj_name] in self.scoped_class_info:
+                class_fqn = self.scoped_class_info[self.type_info[obj_name]]
+                method_sig = self._construct_method_signature(method_call_node, is_static=False)
+                self._collect_usage(class_fqn, method_sig, "method")
 
     def _process_field_access(self, field_access_node):
         """Process field access nodes."""
