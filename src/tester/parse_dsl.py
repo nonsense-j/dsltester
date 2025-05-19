@@ -7,6 +7,7 @@ from pathlib import Path
 from src.utils._antlr import *
 from src.utils.types import *
 from src.utils._kirin import KirinRunner
+from src.utils._helper import create_dir_with_path
 
 
 class KirinAntlrParser:
@@ -143,6 +144,7 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path) -> None:
     :return: None, the dsl preprocess result will be saved to dsl_dir
     """
     assert dsl_dir.is_dir(), f"--> DSL directory {dsl_dir} not found!"
+    create_dir_with_path(dsl_dir, cleanup=True)
 
     for i, node_dsl in enumerate(dsl_prep_res["node_dsl_list"]):
         i += 1

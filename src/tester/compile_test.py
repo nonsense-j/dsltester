@@ -49,7 +49,7 @@ class TestCompiler:
 
         # indicate the mock lib code is generated only by tree-sitter
         self.ts_gen_flag = False
-        self.need_third_party_lib = False
+        self.need_third_party_lib = self.lib_dir.is_dir()
 
     def compile_lib_code(self) -> tuple[bool, str]:
         """
@@ -102,8 +102,11 @@ class TestCompiler:
         create_dir_with_path(self.target_dir, cleanup=True)
         try:
             cmd_list = [self.javac_executable, "-encoding", "utf-8", "-d", str(self.target_dir)]
-            if self.lib_dir.is_dir():
+            if self.need_third_party_lib:
+                logger.info("Lib detected, compiling tests with third-party lib jar...")
                 cmd_list += ["-cp", str(self.mock_jar_file)]
+            else:
+                logger.info("No lib detected, directly compiling tests...")
             cmd_list += self.test_filepaths_str
             env = {"LANG": "C"}
             subprocess.run(cmd_list, capture_output=True, text=True, check=True, env=env)
@@ -148,7 +151,7 @@ class TestCompiler:
         potential_third_pkgs: list[str] = [],
         only_use_llm: bool = False,
         skip_lib_gen: bool = False,
-        fix_max_attempts: int = 0,
+        fix_max_attempts: int = 1,
     ) -> bool:
         """
         generate a mock jar package for the dsl_id (empty implementation with only signatures)
@@ -161,7 +164,7 @@ class TestCompiler:
             False: failed to generate the mock jar
         """
         strategy = "LLM" if only_use_llm else "tree-sitter & LLM"
-        logger.info(f"==> Generating mock lib jar for {self.dsl_id} using {strategy}")
+        logger.info(f"Generating mock lib jar for {self.dsl_id} using {strategy}")
         ts_mocker = MockLibGenTS(self.test_dir)
         llm_mocker = MockLibGenLLM(self.test_dir, potential_third_pkgs=potential_third_pkgs)
 
@@ -233,11 +236,11 @@ class TestCompiler:
 
         return lib_compile_status
 
-    def fix_test_compile(self, error_msg: str) -> dict[str, str]:
+    def fix_test_compile(self, error_msg: str) -> tuple[list[str], dict[str, str]]:
         """
         Fix the mock lib code to make it pass compilation for package.
         :param error_msg: The error message from the compilation.
-        :return: {"{class_fqn}": "{mock_code}"}
+        :return: [test1, test2], {"{class_fqn}": "{mock_code}"}
         """
         # construct the messages
         wrapped_java_code = ""
@@ -251,22 +254,24 @@ class TestCompiler:
                 lib_file_path = Path(lib_file)
                 fqn = lib_file_path.relative_to(self.mock_tmp_dir).as_posix().replace("/", ".").replace(".java", "")
                 wrapped_lib_code += f"<lib-{fqn}>\n{lib_file_path.read_text(encoding='utf-8')}\n</lib-{fqn}>\n"
-            user_prompt = PROMPTS["fix_test_compile_with_lib"].format(
+
+            query_type = "fix_test_compile_with_lib"
+            user_prompt = PROMPTS[query_type].format(
                 wrapped_java_code=wrapped_java_code,
                 wrapped_lib_code=wrapped_lib_code,
                 error_msg=error_msg,
             )
         else:
-            user_prompt = PROMPTS["fix_test_compile_wo_lib"].format(
+            query_type = "fix_test_compile_wo_lib"
+            user_prompt = PROMPTS[query_type].format(
                 wrapped_java_code=wrapped_java_code,
                 error_msg=error_msg,
             )
-        llm_result = LLMWrapper.query_llm(user_prompt, query_type="fix_test_compile")
-        logger.debug(f"LLM FixTestCompile result: \n{llm_result}")
+        llm_result = LLMWrapper.query_llm(user_prompt, query_type=query_type)
 
         # parse result
+        lib_res = parse_lib_code(llm_result)
         pattern = r"<java_file>\s*(.*?)\s*</java_file>"
-        _, lib_res = parse_lib_code(llm_result)
         test_case_list = re.findall(pattern, llm_result, re.DOTALL)
         test_case_list = [test_case for test_case in test_case_list if test_case.strip() != ""]
         test_case_list = fix_syntax_error(test_case_list)
@@ -284,7 +289,7 @@ class TestCompiler:
         if self.mock_tmp_dir.is_dir():
             shutil.rmtree(self.mock_tmp_dir)
 
-    def compile_tests(self, fix_max_attempts: int = 0) -> bool:
+    def compile_tests(self, fix_max_attempts: int = 1) -> bool:
         """
         [Compile Main]Compile the test cases for the given DSL ID with multiple attempts.
         :param fix_max_attempts: The maximum number of attempts to fix compilation using LLM.
@@ -305,14 +310,12 @@ class TestCompiler:
 
         # no third-party lib needed and pass initial compilation: directly return
         if test_compile_status:
-            logger.info(f"No extra third-party lib needed for {self.dsl_id}!")
-            logger.info(f"Successfully compiled test cases for {self.dsl_id}!")
             return True
 
         # Initial compilation fail and require third-party lib: recompile with mock lib jar
         missing_pkg_list = extract_missing_pkgs(error_msg)
         if missing_pkg_list:
-            logger.info(f"Test cases depend on third-party libraries.")
+            logger.info(f"Third-party lib dependency is needed for test cases.")
             self.need_third_party_lib = True
 
             # generate, install and compile lib jar (initial: ts -> llm)
@@ -343,22 +346,25 @@ class TestCompiler:
                 f"--> [Detected LLM CompileTest Failure] Fixing with LLM[attemp-{fix_attempts}/{fix_max_attempts}]..."
             )
             fixed_test_list, fixed_lib_res = self.fix_test_compile(error_msg)
+            if not fixed_test_list:
+                continue
             fixed_test_info = create_test_info(fixed_test_list)
             # save tests and lib code
+            logger.info(f"Installing fixed test cases and lib...")
             save_test_info(fixed_test_info, self.test_dir)
-            self.install_lib_code(fixed_lib_res)
-            lib_compile_status, error_msg = self.compile_lib_code()
-            if not lib_compile_status:
-                # retry
-                continue
+            if fixed_lib_res:
+                self.install_lib_code(fixed_lib_res)
+                lib_compile_status, error_msg = self.compile_lib_code()
+                if not lib_compile_status:
+                    # retry
+                    continue
             test_compile_status, error_msg = self.compile_test_code()
+            fix_attempts += 1
 
         if not test_compile_status:
             logger.warning(
                 f"--> Failed to compile test cases for {self.dsl_id} after {fix_max_attempts} fixing attempts!"
             )
-        else:
-            logger.info(f"Successfully compiled all test cases for {self.dsl_id}!")
 
         return test_compile_status
 

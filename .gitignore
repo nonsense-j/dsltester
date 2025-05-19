@@ -6,6 +6,7 @@ __pycache__/
 # kirin_ws & data
 /kirin_ws
 /data
+/logs
 
 # config
 src/utils/config.py

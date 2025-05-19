@@ -63,7 +63,7 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
             attempts += 1
             assert (
                 False
-            ), f"--> [LLM Output Mismatch] Test count: {len(output_test_list)} != {len(input_test_list)}.LLM output:\n{llm_response}."
+            ), f"--> [LLM Output Mismatch] Test count: {len(output_test_list)} != {len(input_test_list)}. Check LLM output!"
 
         # check the syntax status
         tmp_test_list = []

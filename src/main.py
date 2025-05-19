@@ -51,7 +51,7 @@ def initialize_dsl_ws(dsl_info: DslInfoDict, do_clean_up: bool = False):
 
     # create the report directory for kirin reports (must clean)
     report_ws = dsl_ws_dir / "report"
-    create_dir_with_path(report_ws)
+    create_dir_with_path(report_ws, cleanup=True)
 
 
 def main():
@@ -113,12 +113,15 @@ def main():
         logger.info(f"DSL #{i+1} validation result saved to {res_path}")
 
         LLMWrapper.log_single_record()
+        single_record_path = Path("logs") / f"llm-record.json"
+        with open(single_record_path, "w", encoding="utf-8") as f:
+            json.dump(LLMWrapper.single_call_chain, f, indent=4, ensure_ascii=False)
 
     # save LLM API call record
     LLMWrapper.log_all_record()
-    llm_record_path = Path("logs") / f"main-{dataset_path.stem}-llm-record.json"
-    with open(llm_record_path, "w", encoding="utf-8") as f:
-        json.dump(LLMWrapper.all_call_chains, f, indent=4, ensure_ascii=False, sort_keys=True)
+    all_llm_record_path = Path("logs") / f"main-{dataset_path.stem}-llm-record.json"
+    with open(all_llm_record_path, "w", encoding="utf-8") as f:
+        json.dump(LLMWrapper.all_call_chains, f, indent=4, ensure_ascii=False)
 
 
 if __name__ == "__main__":

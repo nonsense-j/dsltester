@@ -63,6 +63,7 @@ class LLMWrapper:
         prompt_tokens = usage.prompt_tokens if usage else 0
         completion_tokens = usage.completion_tokens if usage else 0
         logger.info(f"LLM Inference Record: {time_cost} seconds, ({prompt_tokens}+{completion_tokens}) tokens")
+        logger.info(f"LLM output for '{query_type}': \n{res}")
 
         # update LLM record
         if not cls.single_call_chain:
