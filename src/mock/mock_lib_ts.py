@@ -4,7 +4,7 @@ This module is used to generate mock libraries for third-party packages using tr
 It can also be used to detect whether the Java codes is using third-party libraries (refer to the res_status and lib_code_map).
 """
 
-import json
+import json, re
 import tree_sitter_java as tsjava
 from pathlib import Path
 from typing import TypedDict
@@ -23,10 +23,14 @@ PREMITIVE_TYPE_DEFAULT = {
     "double": "0.0",
     "char": "\u0000",
     "boolean": "false",
+    "Class": "null",
+    "Object": "null",
+    "String": '""',
 }
 
 
 class MethodSignature(TypedDict):
+    modifier: str
     is_static: bool
     name: str
     arg_type_list: list[str]
@@ -135,7 +139,10 @@ class JavaDependencyParser:
                     method_type = method_sig["type"]
                     arg_str_list = [f"{x} arg_{i+1}" for i, x in enumerate(method_sig["arg_type_list"])]
                     args_full_str = ", ".join(arg_str_list)
-                    if method_sig["is_static"]:
+                    if method_sig.get("modifier", ""):
+                        # only override method has modifier
+                        method_str = f"{method_sig['modifier']} {method_type} {method_name}({args_full_str})"
+                    elif method_sig["is_static"]:
                         method_str = f"public static {method_type} {method_name}({args_full_str})"
                     else:
                         method_str = f"public {method_type} {method_name}({args_full_str})"
@@ -288,6 +295,39 @@ class JavaDependencyParser:
                 self.type_info[var_name] = var_type
             elif child.type == "class_declaration":
                 self.type_info["this"] = child.child_by_field_name("name").text.decode("utf-8")
+                super_class_node = child.child_by_field_name("superclass")
+                if super_class_node:
+                    super_class_name = super_class_node.named_child(0).text.decode("utf-8")
+                    if super_class_name in self.scoped_class_info:
+                        self.type_info["super"] = self.scoped_class_info[super_class_name]
+                else:
+                    self.type_info.pop("super", None)
+            elif child.type == "method_declaration" and "super" in self.type_info:
+                modifier = ""
+                for sub_node in child.named_children:
+                    if sub_node.type == "modifiers":
+                        modifier = sub_node.text.decode("utf-8")
+                        break
+                if "@Override" in modifier:
+                    modifier = re.sub(r"@\S+", "", modifier).strip()
+                    method_type = child.child_by_field_name("type").text.decode("utf-8")
+                    method_name = child.child_by_field_name("name").text.decode("utf-8")
+                    args_node = child.child_by_field_name("parameters")
+                    arg_type_list = []
+                    for i in range(args_node.named_child_count):
+                        arg_node = args_node.named_child(i)
+                        arg_type = arg_node.child_by_field_name("type").text.decode("utf-8")
+                        arg_type_list.append(arg_type)
+                    method_sig = MethodSignature(
+                        modifier=modifier,
+                        is_static="static" in modifier,
+                        name=method_name,
+                        arg_type_list=arg_type_list,
+                        type=method_type,
+                    )
+                    class_fqn = self.scoped_class_info[self.type_info["super"]]
+                    self._collect_usage(class_fqn, method_sig, "method")
+
             elif child.type == "object_creation_expression":
                 self._process_constructor(child)
             elif child.type == "method_invocation":
@@ -561,7 +601,11 @@ class JavaDependencyParser:
             return " ".join(signature["arg_type_list"])
         elif usage_type == "method":
             hash_str = "static " if signature["is_static"] else ""
-            hash_str += f"{signature['name']}({', '.join(signature['arg_type_list'])})"
+            # args fall back to premitive types if type is not built-in
+            premitive_arg_type_list = [
+                "Object" if x not in PREMITIVE_TYPE_DEFAULT else x for x in signature["arg_type_list"]
+            ]
+            hash_str += f"{signature['name']}({', '.join(premitive_arg_type_list)})"
             return hash_str
         else:
             hash_str = "static " if signature["is_static"] else ""

@@ -76,7 +76,7 @@ class MockLibGenLLM:
         :return: {"{class_fqn}": "{mock_code}"}
         """
         # construct the messages
-        gen_mock_in = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code)
+        gen_mock_in = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code, additional_info="")
         gen_mock_out = ""
         for class_fqn, lib_code in lib_res_dict.items():
             gen_mock_out += f"<lib-{class_fqn}>\n{lib_code}\n</lib-{class_fqn}>\n"

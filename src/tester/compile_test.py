@@ -354,6 +354,15 @@ class TestCompiler:
                 return True
 
             missing_pkg_list = extract_missing_pkgs(error_msg)
+            if self.need_third_party_lib:
+                # append existing lib packages to the missing package list
+                for lib_file in self.mock_tmp_dir.rglob("*.java"):
+                    lib_file_path = Path(lib_file)
+                    fqn = lib_file_path.relative_to(self.mock_tmp_dir).as_posix().replace("/", ".").replace(".java", "")
+                    pkg = fqn.rsplit(".", 1)[0]
+                    if pkg not in missing_pkg_list:
+                        missing_pkg_list.append(fqn)
+
             # Initial compilation fail and require third-party lib: recompile with mocked lib jar
             if missing_pkg_list:
                 self.need_third_party_lib = True
