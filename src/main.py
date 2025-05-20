@@ -92,6 +92,7 @@ def main():
         else:
             input_dsl_text = dsl_prep_res["node_dsl_list"][0]
             test_info = gen_pos_tests(input_dsl_text)
+            assert test_info, f"Failed to generate test cases for DSL {dsl_id}"
             save_test_info(test_info, dsl_ws / "test")
 
         # try to compile the test cases (mock lib + compile lib + compile test)

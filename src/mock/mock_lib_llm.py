@@ -33,9 +33,11 @@ class MockLibGenLLM:
     def set_potential_third_pkgs(self, potential_third_pkgs: list[str]):
         self.potential_third_pkgs = potential_third_pkgs
 
-    def gen_mock_lib_code_llm_once(self) -> dict[str, str]:
+    def gen_mock_lib_code_llm(self, retry_max_attempts: int = 1) -> dict[str, str]:
         """
-        [Once] Use LLM to get all the mock lib codes for each thir-party package.
+        Use LLM to get all the mock lib codes for each thir-party package (must mock).
+        Before using this function, please make sure that the test code needs mocked lib.
+        :param retry_max_attempts: The maximum number of times to retry if parsed nothing.
         :return: {"{class_fqn}": "{mock_code}"}
         """
         logger.info(f"Generating mock lib for {len(self.test_filepaths)} tests in {self.test_dir} using LLM...")
@@ -45,30 +47,25 @@ class MockLibGenLLM:
         if self.potential_third_pkgs:
             additional_info = f"""## Potential Third-party Packages\n{", ".join(self.potential_third_pkgs)}\n\n"""
         prompt = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code, additional_info=additional_info)
-        llm_result = LLMWrapper.query_llm(prompt, query_type="gen_mock_lib_code")
 
-        # parse result
-        lib_res = parse_lib_code(llm_result)
-        if not lib_res:
-            logger.warning(f"No third-party dependencies output by LLM.")
-            # logger.warning(f"LLM GenMock result: \n{llm_result}")
-        else:
-            logger.info(f"Generated {len(lib_res)} third-party classes: \n{', '.join(lib_res.keys())}.")
-
-        return lib_res
-
-    def gen_mock_lib_code_llm(self, retry_max_attempts: int = 1) -> dict[str, str]:
-        """
-        [Retry] Use LLM to get all the mock lib codes for each thir-party package.
-        :param retry_max_attempts: The maximum number of times to retry if parsed nothing.
-        :return: {"{class_fqn}": "{mock_code}"}
-        """
-        for attempt in range(1, retry_max_attempts + 1):
-            logger.warning(f"--> [Detected LLM GenMock Failure] Retrying... (attempt {attempt}/{retry_max_attempts})")
-            lib_res = self.gen_mock_lib_code_llm_once()
-            if lib_res:
+        for attempts in range(retry_max_attempts + 1):
+            if attempts > 0:
+                # 0 is the first attempt, others are retries
+                logger.warning(
+                    f"--> [Detected LLM GenMock Failure] Retrying (attempt {attempts}/{retry_max_attempts})..."
+                )
+            llm_result = LLMWrapper.query_llm(prompt, query_type="gen_mock_lib_code")
+            # parse result
+            lib_res = parse_lib_code(llm_result)
+            if not lib_res:
+                logger.warning(f"--> No third-party dependencies output by LLM.")
+            else:
+                logger.info(f"Generated {len(lib_res)} third-party classes: \n{', '.join(lib_res.keys())}.")
                 return lib_res
-        logger.error(f"--> LLM GenMock failed after {retry_max_attempts} attempts! Please check the LLM output.")
+
+        logger.error(
+            f"--> [Detected LLM GenMock Failure] failed after {retry_max_attempts} attempts! Please check the LLM output."
+        )
         return dict()
 
     def fix_mock_lib_code(self, lib_res_dict: dict[str, str], error_msg: str) -> dict[str, str]:

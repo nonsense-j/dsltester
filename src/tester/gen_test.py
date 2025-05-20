@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from typing import Optional
 
 from .parse_dsl import preprocess_dsl
 from .prompts import PROMPTS, SYS_PROMPTS
@@ -22,7 +23,7 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
     final_test_list = [""] * len(test_list)
 
     # loop variables
-    attempts = 1
+    attempts = 0
     input_test_list = []
     input_base_id_list = []
 
@@ -44,9 +45,9 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
         logger.info(f"[Detected trunctuation] Only the last test case is invalid, remove it.")
         return final_test_list[:-1]
 
-    while attempts <= max_attempts and len(input_test_list) > 0:
-        logger.warning(f"--> [Detected Syntax Error] Attempt {attempts}/{max_attempts} to fix syntax errors...")
+    while attempts < max_attempts and len(input_test_list) > 0:
         attempts += 1
+        logger.warning(f"--> [Detected LLM SyntaxFix Failure] Retrying (attempt {attempts}/{max_attempts})...")
         # construct the user prompt
         wrapped_java_code = "\n\n".join([f"```java\n{test_code}\n```" for test_code in input_test_list])
         user_prompt = PROMPTS["fix_syntax_error"].format(
@@ -59,10 +60,10 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
         pattern = r"```java\s*(.*?)\s*```"
         output_test_list = re.findall(pattern, llm_response, re.DOTALL)
         output_test_list = [test_case for test_case in output_test_list if test_case.strip() != ""]
-        # no output or mismatch, currently assert. TODO)) add retry
+        # no output or mismatch, currently assert, continue to retry
         if len(output_test_list) != len(input_test_list):
             logger.warning(
-                f"--> [Detected LLM FixSyn Failure] Output test count mismatches: {len(output_test_list)} != {len(input_test_list)}. Retrying..."
+                f"--> LLM SyntaxFix Output test count mismatches: {len(output_test_list)} != {len(input_test_list)}."
             )
             continue
 
@@ -82,24 +83,22 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
         # update
         input_test_list = tmp_test_list
         input_base_id_list = tmp_base_id_list
-        logger.info(
-            f"[SyntaxFix Attempt {attempts}/{max_attempts}] {len(input_test_list)} test cases still have syntax errors."
-        )
 
     # if still has syntax error, just keep the passing test cases
     res = [test for test in final_test_list if test != ""]
     if len(res) < len(test_list):
         logger.warning(f"--> {len(test_list) - len(res)} test cases are skipped for unsolved syntax errors.")
-    logger.info(f"Generated {len(res)} valid test cases after syntax fixing.")
+    logger.info(f"Keep {len(res)} valid test cases after syntax fixing.")
     return res
 
 
-def gen_pos_tests(dsl_text: str, add_info: bool = False) -> TestInfoDict:
+def gen_pos_tests(dsl_text: str, add_info: bool = False, retry_max_attempts: int = 1) -> Optional[TestInfoDict]:
     """
     Generate positive test cases for the given DSL.
     Args:
         dsl_text: The input dsl text.
         add_info: Whether to add additional information (node_properties) to the prompt.
+        retry_max_attempts: The maximum number of attempts to retry if parsed nothing.
     """
     logger.info(f"==> Generating positive test cases")
 
@@ -114,18 +113,30 @@ def gen_pos_tests(dsl_text: str, add_info: bool = False) -> TestInfoDict:
         additional_info=additional_info,
         dsl_input=dsl_text,
     )
-    # query the LLM
-    llm_response = LLMWrapper.query_llm(user_prompt, system_prompt=sys_prompt, query_type="gen_pos_tests")
-    logger.debug(f"LLM TestGenerator result: \n{llm_response}")
-    # parse the response
-    pattern = r"```java\s*(.*?)\s*```"
-    test_case_list = re.findall(pattern, llm_response, re.DOTALL)
-    test_case_list = [test_case for test_case in test_case_list if test_case.strip() != ""]
 
-    # validate and fix the syntax of the test cases
-    test_case_list = fix_syntax_error(test_case_list)
+    for attempt in range(retry_max_attempts + 1):
+        if attempt > 0:
+            # 0 is the first attempt, others are retries
+            logger.warning(
+                f"--> [Detected LLM GenPosTetss Failure] Retrying (attempt {attempt}/{retry_max_attempts})..."
+            )
+        # query the LLM
+        llm_response = LLMWrapper.query_llm(user_prompt, system_prompt=sys_prompt, query_type="gen_pos_tests")
+        logger.debug(f"LLM TestGenerator result: \n{llm_response}")
+        # parse the response
+        pattern = r"```java\s*(.*?)\s*```"
+        test_case_list = re.findall(pattern, llm_response, re.DOTALL)
+        test_case_list = [test_case for test_case in test_case_list if test_case.strip() != ""]
 
-    return create_test_info(test_case_list)
+        # validate and fix the syntax of the test cases
+        test_case_list = fix_syntax_error(test_case_list)
+        if test_case_list:
+            return create_test_info(test_case_list)
+
+    logger.error(
+        f"--> [Detected LLM GenPosTests Failure] failed after {retry_max_attempts} attempts! Please check the LLM output."
+    )
+    return None
 
 
 def save_test_info(test_info: TestInfoDict, test_dir: Path) -> None:
