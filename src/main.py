@@ -96,14 +96,12 @@ def main():
 
         # try to compile the test cases (mock lib + compile lib + compile test)
         test_compiler = TestCompiler(dsl_id)
-        # TODO)) if status is False
-        try:
-            test_compile_status = test_compiler.compile_tests()
-            assert test_compile_status, f"Compilation failed for DSL {dsl_id}."
-        except Exception as e:
-            # logger.error(f"Compilation fails, clear mock_lib directories...")
-            # test_compiler.clear_mock_lib()
-            logger.error(f"Compilation failed for DSL {dsl_id}: {e}")
+        test_compile_status = test_compiler.compile_tests()
+        if not test_compile_status:
+            # TODO)) if status is False
+            # logger.error(f"Compilation failed for DSL {dsl_id}, skip...")
+            # continue
+            assert False, f"Compilation failed for DSL {dsl_id}, exit..."
 
         # validate tests
         res = validate_tests(dsl_id)
