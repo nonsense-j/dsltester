@@ -102,6 +102,19 @@ def extract_missing_pkgs(compile_error_msg: str) -> list[str]:
     return list(set(missing_pkgs))
 
 
+def get_pkgs_from_fqns(class_fqns: list[str]) -> list[str]:
+    """
+    Extract the package names from the fully qualified class names.
+    :param class_fqns: A list of fully qualified class names.
+    :return: A list of package names.
+    """
+    pkgs = set()
+    for class_fqn in class_fqns:
+        pkg_name = class_fqn.rsplit(".", 1)[0]
+        pkgs.add(pkg_name)
+    return pkgs
+
+
 def save_dsl_prep_result(dsl_prep_result: DslPrepResDict, save_dir: Path):
     """
     save dsl prep result to file

@@ -43,21 +43,22 @@ PROMPTS[
 Given a code checker written in the DSL format, please generate comprehensive and concise test cases (Java codes) that the checker can report. 
 
 {additional_info}
-## Notice: Must-follow guidelines
-Here are detailed guildlines that you must always bear in mind and follow:
-1. Each test case must be reported by the checker, which means it contains checker-matching code patterns. Notely, do not be misled by the rule \
-descriptions (if exists), which describes the suggested proper behaviors while the checker reports improper ones. Only generate test cases \
-that can be reported by the checker.
-2. Each test case should keep clear, simple and minimal, excluding any code that is irrelevant to the checker. Include simple, necessary comments \
-to clarify the purpose of each test case and show their differences. 
-3. Each test case must be able to pass compilation. Every used symbol should either be defined in the test case itself or correctly imported. \
-Do not import unused classes or packages.
-"com.example.AnotherClass", method "anotherMethod" or field "anotherField" with proper import statements and remember to avoid dependency conflits.\
-4. Ensure that each case covering the same checking scenario only occurs once and that all necessary scenarios are covered. Specifically, \
-for regex expressions that have multiple options like "(a|b|c|d)", just use one or two of them to make the test suite concise.   
-5. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name of each test case. \
-Specifically, strictly using "PositiveTest{{i}}" as each test's main public class name where {{i}} is the test index.
-6. Output the test cases to me without detailed explanations and every test case must be independently surrounded with "```java" and "```".
+## Important: Mandatory Guidelines for Test Case Generation
+Strictly adhere to these rules when creating test cases:
+1. Checker-Reportable Tests. Ensure every test case contains checker-matching code patterns to guarantee reportability. \
+Never generate test cases that pass silently—only those explicitly flagged by the checker. Notely, prioritize checker requirements \
+over rule descriptions (if provided), which often describe suggested proper behaviors while the checker reports improper ones. \
+2. Checking Scenario Coverage. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
+across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). 
+3. Minimal and Clear Code Structure. Keep code simple, minimal, and free of irrelevant logic. Prefer basic statements (e.g., separate calls) over \
+complex patterns (e.g., chained methods) unless explicitly required. For clearness, add brief, targeted comments to highlight test purposes and \
+distinctions between cases.
+4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
+Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
+test case itself or correctly imported. Do not import unused classes. 
+5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
+which uses exact class naming "PositiveTest{{i}}" where {{i}} is the test index.
+6. Output Specification. Directly output each test case enclosed in separate "```java" and "```" blocks excluding detailed explanations.
 
 ### Your Task
 ### Checker DSL
@@ -130,8 +131,8 @@ Keep the original code identifier naming, structure and logic as much as possibl
 
 ### Input and Output Format
 For both input and output, each Java code file is wrapped in "<java_file>" and "</java_file>" and each library code is wrapped in \
-"<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Directly output all the fixed code files and library code wrapped in the same format. \
-Unchanged code files and library code should also be output as they are.
+"<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Directly output all the fixed code files (in the same order as input) \
+and library code wrapped in the correct format. Unchanged code files and library code should also be output as they are.
 
 ### Input
 - Mock Library code files:
@@ -149,11 +150,12 @@ PROMPTS[
 ] = """\
 ## General Goal
 You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files \
-(warnings can be ignored). As inputs, I will provide you with a list of the Java code files and the compilation error message.
+(warnings can be ignored). As inputs, I will provide you with a list of the Java code files and the compilation error message. \
+You need to generate the fixed Java code files that can pass compilation as output. \
 
 ### Input and Output Format
-For both input and output, each Java code file must be wrapped in "<java_file>" and "</java_file>". \
-Directly output the fixed code files wrapped in the same format. Unchanged code files and library code should also be output as they are.
+For both input and output, each Java code file must be wrapped in "<java_file>" and "</java_file>" with consistent order, where unchanged \
+Java code files should also be output as they are. Directly output the fixed code files wrapped in the correct format without detailed explanations. \
 
 ### Input
 - Java code files:

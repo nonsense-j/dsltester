@@ -13,7 +13,13 @@ from src.mock.mock_lib_llm import MockLibGenLLM
 from src.mock.mock_lib_ts import MockLibGenTS
 from src.utils._llm import LLMWrapper
 from src.tester.gen_test import fix_syntax_error, save_test_info
-from src.utils._helper import create_dir_with_path, parse_lib_code, extract_missing_pkgs, create_test_info
+from src.utils._helper import (
+    create_dir_with_path,
+    parse_lib_code,
+    extract_missing_pkgs,
+    create_test_info,
+    get_pkgs_from_fqns,
+)
 
 
 class TestCompiler:
@@ -49,7 +55,7 @@ class TestCompiler:
 
         # indicate the mock lib code is generated only by tree-sitter
         self.ts_gen_flag = False
-        self.need_third_party_lib = self.lib_dir.is_dir()
+        self.need_third_party_lib = False
 
     def compile_lib_code(self) -> tuple[bool, str]:
         """
@@ -130,7 +136,7 @@ class TestCompiler:
         :return: True if the installation is successful, False otherwise.
         """
         # check the mock lib code result
-        if len(mock_lib_code_res) == 0:
+        if not mock_lib_code_res:
             logger.warning(f"--> Skip install since no mock lib code is generated.")
             return False
         # create the mock tmp dir if not exists
@@ -170,7 +176,12 @@ class TestCompiler:
         llm_mocker = MockLibGenLLM(self.test_dir, potential_third_pkgs=potential_third_pkgs)
 
         if skip_lib_gen:
-            logger.info(f"Using existing lib code to build Jar package.")
+            logger.info(f"Using existing lib code in {self.mock_tmp_dir} to build Jar package.")
+            lib_code_res = dict()
+            for lib_file in self.mock_tmp_dir.rglob("*.java"):
+                lib_file_path = Path(lib_file)
+                fqn = lib_file_path.relative_to(self.mock_tmp_dir).as_posix().replace("/", ".").replace(".java", "")
+                lib_code_res[fqn] = lib_file_path.read_text(encoding="utf-8")
         else:
             if only_use_llm:
                 # generate mock lib code only with LLM
@@ -179,19 +190,27 @@ class TestCompiler:
                 # generate mock lib code (initial: tree-sitter -> LLM)
                 lib_code_res = ts_mocker.gen_mock_lib_code_ts()
                 # self.need_third_party_lib indicates whether the test cases need third-party lib actually
-                if self.need_third_party_lib and not lib_code_res:
-                    logger.warning(f"--> Expected to get mock lib code but got none by tree-sitter!")
-                    logger.warning(f"--> [Detected Tree-sitter GenMock Failure] Retrying with LLM...")
-                    lib_code_res = llm_mocker.gen_mock_lib_code_llm()
+                if self.need_third_party_lib:
+                    if not lib_code_res:
+                        logger.warning(f"--> Expected to get mock lib code but got none by tree-sitter!")
+                        logger.warning(f"--> [Detected Tree-sitter GenMock Failure] Retrying with LLM...")
+                        lib_code_res = llm_mocker.gen_mock_lib_code_llm()
+                    else:
+                        ts_pkgs = get_pkgs_from_fqns(list(lib_code_res.keys()))
+                        missed_pkgs = list(set(potential_third_pkgs) - set(ts_pkgs))
+                        if missed_pkgs:
+                            logger.warning(f"--> Tree-sitter misses some third-party packages: {','.join(missed_pkgs)}")
+                            logger.warning(f"--> [Detected Tree-sitter GenMock Failure] Retrying with LLM...")
+                            lib_code_res = llm_mocker.gen_mock_lib_code_llm()
+                        else:
+                            self.ts_gen_flag = True
                 else:
                     self.ts_gen_flag = True
 
             if not lib_code_res:
                 if self.need_third_party_lib:
                     logger.warning(f"--> Expected to get mock lib code but got none by LLM!")
-                    lib_code_res = llm_mocker.gen_mock_lib_code_llm_retry()
-                    if not lib_code_res:
-                        return False
+                    return False
                 else:
                     logger.info(f"No mock lib code is needed for {self.dsl_id}!")
                     return True
@@ -208,9 +227,7 @@ class TestCompiler:
             # generate mock lib code only with LLM
             lib_code_res = llm_mocker.gen_mock_lib_code_llm()
             if not lib_code_res:
-                lib_code_res = llm_mocker.gen_mock_lib_code_llm_retry()
-                if not lib_code_res:
-                    return False
+                return False
             # install and recompile
             self.install_lib_code(lib_code_res)
             lib_compile_status, error_msg = self.compile_lib_code()
@@ -221,6 +238,7 @@ class TestCompiler:
             logger.warning(
                 f"--> [Detected LLM BuildMock Failure] Fixing with LLM[attemp-{fix_attempts}/{fix_max_attempts}]..."
             )
+            fix_attempts += 1
             lib_code_res = llm_mocker.fix_mock_lib_code(lib_code_res, error_msg)
             if not lib_code_res:
                 # continue to retry
@@ -228,7 +246,6 @@ class TestCompiler:
             # install & compile
             self.install_lib_code(lib_code_res)
             lib_compile_status, error_msg = self.compile_lib_code()
-            fix_attempts += 1
 
         if not lib_compile_status:
             logger.warning(
@@ -237,9 +254,9 @@ class TestCompiler:
 
         return lib_compile_status
 
-    def fix_test_compile(self, error_msg: str) -> tuple[list[str], dict[str, str]]:
+    def fix_test_compile_once(self, error_msg: str) -> tuple[list[str], dict[str, str]]:
         """
-        Fix the mock lib code to make it pass compilation for package.
+        [Once] Fix the mock lib code to make it pass compilation for package.
         :param error_msg: The error message from the compilation.
         :return: [test1, test2], {"{class_fqn}": "{mock_code}"}
         """
@@ -277,7 +294,28 @@ class TestCompiler:
         test_case_list = [test_case for test_case in test_case_list if test_case.strip() != ""]
         test_case_list = fix_syntax_error(test_case_list)
 
+        if len(test_case_list) != len(self.test_filepaths_str):
+            logger.warning(
+                f"--> [Detected LLM FixTest Failure] Output test count mismatches: {len(test_case_list)} != {len(self.test_filepaths_str)}. Retrying..."
+            )
+            return [], dict()
+
         return test_case_list, lib_res
+
+    def fix_test_compile(self, error_msg: str, retry_max_attempts: int = 1) -> tuple[list[str], dict[str, str]]:
+        """
+        [Retry] Fix the mock lib code to make it pass compilation for package.
+        :param error_msg: The error message from the compilation.
+        :param retry_max_attempts: The maximum number of times to retry if parsed nothing.
+        :return: [test1, test2], {"{class_fqn}": "{mock_code}"}
+        """
+        for attempt in range(1, retry_max_attempts + 1):
+            logger.warning(f"--> [Detected LLM FixTest Failure] Retrying... (attempt {attempt}/2)")
+            test_case_list, lib_res = self.fix_test_compile_once(error_msg)
+            if test_case_list:
+                return test_case_list, lib_res
+        logger.error(f"--> LLM FixTest failed after {retry_max_attempts} attempts! Please check the LLM output.")
+        return [], dict()
 
     def clear_mock_lib(self) -> bool:
         """
@@ -306,61 +344,68 @@ class TestCompiler:
             logger.error(f"--> No test cases are found in {test_dir}!")
             return False
 
-        # Initial test compilation
-        test_compile_status, error_msg = self.compile_test_code(do_log_error=False)
-
-        # no third-party lib needed and pass initial compilation: directly return
-        if test_compile_status:
-            return True
-
-        # Initial compilation fail and require third-party lib: recompile with mock lib jar
-        missing_pkg_list = extract_missing_pkgs(error_msg)
-        if missing_pkg_list:
-            logger.info(f"Third-party lib dependency is needed for test cases.")
-            self.need_third_party_lib = True
-
-            # generate, install and compile lib jar (initial: ts -> llm)
-            mock_jar_status = self.gen_mock_jar(only_use_llm=False, potential_third_pkgs=missing_pkg_list)
-            if not mock_jar_status:
-                logger.error(f"--> Failed to compile test cases for {self.dsl_id} since generating mock jar failed!")
-                return False
-
-            # recompile the test cases with mock lib jar
-            test_compile_status, error_msg = self.compile_test_code()
-
-            # if the test cases still fail to compile and lib mocked by tree-sitter, remock with LLM first
-            if not test_compile_status and self.ts_gen_flag:
-                logger.warning(f"--> [Detected Tree-sitter CompileTest Failure] Retrying mocking with LLM...")
-                self.ts_gen_flag = False
-                mock_jar_status = self.gen_mock_jar(only_use_llm=True, potential_third_pkgs=missing_pkg_list)
-                if not mock_jar_status:
-                    logger.warning(
-                        f"--> Failed to compile test cases for {self.dsl_id} since generating mock jar failed!"
-                    )
-                    return False
-                test_compile_status, error_msg = self.compile_test_code()
-
         # Try fixing the compilation error using LLM if fails
         fix_attempts = 1
         while fix_attempts <= fix_max_attempts and not test_compile_status:
+
+            self.need_third_party_lib = self.lib_dir.is_dir()
+            fix_attempts += 1
+
+            # Initial test compilation
+            test_compile_status, error_msg = self.compile_test_code(do_log_error=False)
+
+            # no third-party lib needed and pass initial compilation: directly return
+            if test_compile_status:
+                return True
+
+            missing_pkg_list = extract_missing_pkgs(error_msg)
+            # Initial compilation fail and require third-party lib: recompile with mocked lib jar
+            if missing_pkg_list:
+                self.need_third_party_lib = True
+                logger.info(f"Extra third-party lib dependency is needed for test cases.")
+
+                # generate, install and compile lib jar (initial: ts -> llm)
+                mock_jar_status = self.gen_mock_jar(only_use_llm=False, potential_third_pkgs=missing_pkg_list)
+                if not mock_jar_status:
+                    logger.error(f"--> Exit test compilation for {self.dsl_id} since generating mock jar failed!")
+                    return False
+
+                # recompile the test cases with mock lib jar
+                test_compile_status, error_msg = self.compile_test_code()
+
+                # if the test cases still fail to compile and lib mocked by tree-sitter, remock with LLM first
+                if not test_compile_status and self.ts_gen_flag:
+                    logger.warning(f"--> [Detected Tree-sitter CompileTest Failure] Retrying mocking with LLM...")
+                    self.ts_gen_flag = False
+                    mock_jar_status = self.gen_mock_jar(only_use_llm=True, potential_third_pkgs=missing_pkg_list)
+                    if not mock_jar_status:
+                        logger.error(f"--> Exit test compilation for {self.dsl_id} since generating mock jar failed!")
+                        return False, error_msg
+                    test_compile_status, error_msg = self.compile_test_code()
+
+            # Compilation fails no matter with or without lib: try fixing with LLM
             logger.warning(
                 f"--> [Detected LLM CompileTest Failure] Fixing with LLM[attemp-{fix_attempts}/{fix_max_attempts}]..."
             )
             fixed_test_list, fixed_lib_res = self.fix_test_compile(error_msg)
             if not fixed_test_list:
-                continue
-            fixed_test_info = create_test_info(fixed_test_list)
+                logger.error(f"--> Exit test compilation for {self.dsl_id} since fixing tests failed!")
+                return False
             # save tests and lib code
-            logger.info(f"Installing fixed test cases and lib...")
+            fixed_test_info = create_test_info(fixed_test_list)
+            logger.info(f"Installing fixed test cases...")
             save_test_info(fixed_test_info, self.test_dir)
             if fixed_lib_res:
+                logger.info(f"Installing fixed lib code...")
                 self.install_lib_code(fixed_lib_res)
-                lib_compile_status, error_msg = self.compile_lib_code()
-                if not lib_compile_status:
-                    # retry
-                    continue
-            test_compile_status, error_msg = self.compile_test_code()
-            fix_attempts += 1
+                self.ts_gen_flag = False
+                mock_jar_status = self.gen_mock_jar(skip_lib_gen=True)
+                if not mock_jar_status:
+                    logger.error(f"--> Exit test compilation for {self.dsl_id} since generating mock jar failed!")
+                    return False
+            else:
+                logger.info(f"No lib code generated, skip installing lib code...")
+                self.clear_mock_lib()
 
         if not test_compile_status:
             logger.warning(

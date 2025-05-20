@@ -15,14 +15,14 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
     Fix the syntax error in the test cases.
     Args:
         test_list: The test codes to be fixed [may contain syntax errors].
-        max_attempts: The maximum number of attempts to fix the syntax error.
+        max_attempts: The maximum number of attempts to fix the syntax error (retry and iterative fix).
     Returns:
         The fixed test code list. Invalid test cases that cannot be fixed are excluded.
     """
     final_test_list = [""] * len(test_list)
 
     # loop variables
-    attempts = 0
+    attempts = 1
     input_test_list = []
     input_base_id_list = []
 
@@ -44,8 +44,9 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
         logger.info(f"[Detected trunctuation] Only the last test case is invalid, remove it.")
         return final_test_list[:-1]
 
-    while attempts < max_attempts and len(input_test_list) > 0:
-        logger.warning(f"--> [Detected Syntax Error] Attempt {attempts + 1}/{max_attempts} to fix syntax errors...")
+    while attempts <= max_attempts and len(input_test_list) > 0:
+        logger.warning(f"--> [Detected Syntax Error] Attempt {attempts}/{max_attempts} to fix syntax errors...")
+        attempts += 1
         # construct the user prompt
         wrapped_java_code = "\n\n".join([f"```java\n{test_code}\n```" for test_code in input_test_list])
         user_prompt = PROMPTS["fix_syntax_error"].format(
@@ -60,10 +61,10 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
         output_test_list = [test_case for test_case in output_test_list if test_case.strip() != ""]
         # no output or mismatch, currently assert. TODO)) add retry
         if len(output_test_list) != len(input_test_list):
-            attempts += 1
-            assert (
-                False
-            ), f"--> [LLM Output Mismatch] Test count: {len(output_test_list)} != {len(input_test_list)}. Check LLM output!"
+            logger.warning(
+                f"--> [Detected LLM FixSyn Failure] Output test count mismatches: {len(output_test_list)} != {len(input_test_list)}. Retrying..."
+            )
+            continue
 
         # check the syntax status
         tmp_test_list = []
@@ -81,7 +82,6 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
         # update
         input_test_list = tmp_test_list
         input_base_id_list = tmp_base_id_list
-        attempts += 1
         logger.info(
             f"[SyntaxFix Attempt {attempts}/{max_attempts}] {len(input_test_list)} test cases still have syntax errors."
         )
