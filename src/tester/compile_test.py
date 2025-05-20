@@ -346,6 +346,7 @@ class TestCompiler:
 
         # Try fixing the compilation error using LLM if fails
         fix_attempts = 1
+        test_compile_status = False
         while fix_attempts <= fix_max_attempts and not test_compile_status:
 
             self.need_third_party_lib = self.lib_dir.is_dir()
@@ -383,29 +384,30 @@ class TestCompiler:
                         return False, error_msg
                     test_compile_status, error_msg = self.compile_test_code()
 
-            # Compilation fails no matter with or without lib: try fixing with LLM
-            logger.warning(
-                f"--> [Detected LLM CompileTest Failure] Fixing with LLM[attemp-{fix_attempts}/{fix_max_attempts}]..."
-            )
-            fixed_test_list, fixed_lib_res = self.fix_test_compile(error_msg)
-            if not fixed_test_list:
-                logger.error(f"--> Exit test compilation for {self.dsl_id} since fixing tests failed!")
-                return False
-            # save tests and lib code
-            fixed_test_info = create_test_info(fixed_test_list)
-            logger.info(f"Installing fixed test cases...")
-            save_test_info(fixed_test_info, self.test_dir)
-            if fixed_lib_res:
-                logger.info(f"Installing fixed lib code...")
-                self.install_lib_code(fixed_lib_res)
-                self.ts_gen_flag = False
-                mock_jar_status = self.gen_mock_jar(skip_lib_gen=True)
-                if not mock_jar_status:
-                    logger.error(f"--> Exit test compilation for {self.dsl_id} since generating mock jar failed!")
+            if not test_compile_status:
+                # Compilation fails no matter with or without lib: try fixing with LLM
+                logger.warning(
+                    f"--> [Detected LLM CompileTest Failure] Fixing with LLM[attemp-{fix_attempts}/{fix_max_attempts}]..."
+                )
+                fixed_test_list, fixed_lib_res = self.fix_test_compile(error_msg)
+                if not fixed_test_list:
+                    logger.error(f"--> Exit test compilation for {self.dsl_id} since fixing tests failed!")
                     return False
-            else:
-                logger.info(f"No lib code generated, skip installing lib code...")
-                self.clear_mock_lib()
+                # save tests and lib code
+                fixed_test_info = create_test_info(fixed_test_list)
+                logger.info(f"Installing fixed test cases...")
+                save_test_info(fixed_test_info, self.test_dir)
+                if fixed_lib_res:
+                    logger.info(f"Installing fixed lib code...")
+                    self.install_lib_code(fixed_lib_res)
+                    self.ts_gen_flag = False
+                    mock_jar_status = self.gen_mock_jar(skip_lib_gen=True)
+                    if not mock_jar_status:
+                        logger.error(f"--> Exit test compilation for {self.dsl_id} since generating mock jar failed!")
+                        return False
+                else:
+                    logger.info(f"No lib code generated, skip installing lib code...")
+                    self.clear_mock_lib()
 
         if not test_compile_status:
             logger.warning(
