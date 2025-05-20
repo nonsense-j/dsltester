@@ -459,6 +459,11 @@ class JavaDependencyParser:
                 method_type = self.method_decl_map[parent_method][0][arg_index]
             else:
                 method_type = "Object"
+        elif parent_node.type == "binary_expression":
+            left_node = parent_node.child_by_field_name("left")
+            right_node = parent_node.child_by_field_name("right")
+            other_node = left_node if left_node != method_call_node else right_node
+            method_type = self._get_arg_type(other_node)
         else:
             method_type = "Object"
         # if the method_type is a class, use the full name
@@ -498,6 +503,28 @@ class JavaDependencyParser:
         elif parent_node.type == "assignment_expression":
             identifier_node = parent_node.child_by_field_name("left")
             field_type = self.type_info.get(identifier_node.text.decode("utf-8"), "Object")
+        elif parent_node.type == "argument_list":
+            parent_method_node = parent_node.parent
+            parent_method = parent_method_node.child_by_field_name("name").text.decode("utf-8")
+            if parent_method in self.method_decl_map:
+                # get the arg index, current method_type is the parent's param type with the same index
+                arg_node_list = parent_node.named_children
+                arg_index = -1
+                for i, arg_node in enumerate(arg_node_list):
+                    if arg_node == field_access_node:
+                        arg_index = i
+                if arg_index == -1:
+                    raise ValueError(
+                        f"Cannot find the argument index for '{parent_node.text.decode()}' in '{parent_method_node.text.decode()}'"
+                    )
+                field_type = self.method_decl_map[parent_method][0][arg_index]
+            else:
+                field_type = "Object"
+        elif parent_node.type == "binary_expression":
+            left_node = parent_node.child_by_field_name("left")
+            right_node = parent_node.child_by_field_name("right")
+            other_node = left_node if left_node != field_access_node else right_node
+            field_type = self._get_arg_type(other_node)
         else:
             field_type = "Object"
         # if the field_type is a class, use the full name
