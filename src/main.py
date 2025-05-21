@@ -97,7 +97,7 @@ def main():
 
         # try to compile the test cases (mock lib + compile lib + compile test)
         test_compiler = TestCompiler(dsl_id)
-        test_compile_status = test_compiler.compile_tests()
+        test_compile_status = test_compiler.compile_tests(fix_max_attempts=2)
         if not test_compile_status:
             # TODO)) if status is False
             logger.error(f"Compilation failed for DSL {dsl_id}, skip...")

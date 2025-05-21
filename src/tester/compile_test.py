@@ -28,12 +28,19 @@ class TestCompiler:
     For third-party dependency, it will generate a mock jar package and compile the test cases.
     """
 
-    def __init__(self, dsl_id: str):
+    def __init__(self, dsl_id: str, test_dir: Path = None, checker_dsl: str = ""):
         self.dsl_id = dsl_id
         self.dsl_ws_dir = Path(f"kirin_ws/{dsl_id}")
 
-        self.test_dir = self.dsl_ws_dir / "test"
+        self.test_dir = test_dir if test_dir else self.dsl_ws_dir / "test"
         assert self.test_dir.is_dir(), f"--> Test dirpath {self.test_dir} does not exists!"
+
+        # by default, tests follows the DSL_N1.kirin
+        self.checker_dsl = checker_dsl
+        if not checker_dsl:
+            dsl_n1_file = self.dsl_ws_dir / "dsl/DSL_N1.kirin"
+            logger.info(f"No checker provided, using default {dsl_n1_file} for tests in {self.test_dir}.")
+            self.checker_dsl = dsl_n1_file.read_text(encoding="utf-8")
 
         self.test_filepaths_str: list[str] = [str(test_file) for test_file in self.test_dir.rglob("*.java")]
         if len(self.test_filepaths_str) == 0:
@@ -44,7 +51,7 @@ class TestCompiler:
         self.lib_dir = self.dsl_ws_dir / "lib"
         self.mock_tmp_dir = self.dsl_ws_dir / "_mock_tmp"
         self.mock_jar_file = self.lib_dir / "mock.jar"
-        self.target_dir = self.test_dir.parent / "target"
+        self.target_dir = self.dsl_ws_dir / "target"
 
         # cmd executable
         self.javac_executable = os.path.join(KIRIN_JAVA_HOME, "bin", "javac")
@@ -276,6 +283,7 @@ class TestCompiler:
 
             query_type = "fix_test_compile_with_lib"
             user_prompt = PROMPTS[query_type].format(
+                dsl_input=self.checker_dsl,
                 wrapped_java_code=wrapped_java_code,
                 wrapped_lib_code=wrapped_lib_code,
                 error_msg=error_msg,
@@ -283,6 +291,7 @@ class TestCompiler:
         else:
             query_type = "fix_test_compile_wo_lib"
             user_prompt = PROMPTS[query_type].format(
+                dsl_input=self.checker_dsl,
                 wrapped_java_code=wrapped_java_code,
                 error_msg=error_msg,
             )

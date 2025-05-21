@@ -130,10 +130,14 @@ You need to resolve these errors by modifying the Java files and the library cod
 
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Fix all compilation errors in the provided Java code files, while ignoring warnings. Since the error \
-message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing errors.
-2. Minimal Changes. Make minimum changes to pass compilation. While keep original code comments, do not add comments to explain the changes.
-3. Maintain Original Logic. Never change the original code logic, which can be inferred from the original code comments. Code comments \
-should be kept with the same intents.
+message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems.
+2. Maintain Original Logic. Never change the original code logic, which can be inferred from the original code comments. \
+While keep original code comments, do not add comments to explain the changes. 
+3. Maintain Checker-Reportable Patterns. Ensure that the fixed Java code files still contain checker-matching code patterns to guarantee reportability. \
+The static code checker is written in dsl format as follows:
+<checker_dsl>
+{dsl_input}
+</checker_dsl>
 
 
 ### Input and Output Format
@@ -162,10 +166,14 @@ You need to generate the fixed Java code files that can pass compilation as outp
 
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Fix all compilation errors in the provided Java code files, while ignoring warnings. Since the error \
-message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing errors.
-2. Minimal Changes. Make minimum changes to pass compilation. While keep original code comments, do not add comments to explain the changes.
-3. Maintain Original Logic. Never change the original code logic, which can be inferred from the original code comments. Code comments \
-should be kept with the same intents.
+message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems.
+2. Maintain Original Logic. Never change the original code logic, which can be inferred from the original code comments. \
+While keep original code comments, do not add comments to explain the changes. 
+3. Maintain Checker-Reportable Patterns. Ensure that the fixed Java code files still contain checker-matching code patterns to guarantee reportability. \
+The static code checker is written in dsl format as follows:
+<checker_dsl>
+{dsl_input}
+</checker_dsl>
 
 ### Input and Output Format
 For both input and output, each Java code file must be wrapped in "<java_file>" and "</java_file>" with consistent order, where unchanged \
