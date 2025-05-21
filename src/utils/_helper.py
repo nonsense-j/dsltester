@@ -153,8 +153,15 @@ def update_main_class(test_case: str, class_name: str) -> str:
     :return: updated test case
     """
     # update the main public class name in the test case
-    pattern = r"public\s+class\s+\w+"
-    new_test_case = re.sub(pattern, f"public class {class_name}", test_case)
+    pattern = r"public\s+(class)\s+\w+"
+    # replace the class name with the new class name
+    ori_class_name = re.search(pattern, test_case)
+    if not ori_class_name:
+        logger.error(f"--> No public main class found in the test case: {test_case}")
+        return test_case
+    else:
+        ori_class_name = ori_class_name.group(0)
+        new_test_case = test_case.replace(ori_class_name, class_name)
     return new_test_case
 
 
@@ -234,42 +241,47 @@ def validate_syntax(java_code_list: list[str]) -> list[bool]:
 
 
 if __name__ == "__main__":
-    # code_list = [
-    #     """
-    #     public class PositiveTest {
-    #         public static void main(String[] args) {
-    #             System.out.println("Hello, World!");
-    #         }
-    #     }
-    #     """,
-    #     """
-    #     public class Positivetest {
-    #         public static void main(String[] args) {
-    #             System.out.println("Hello, World);
-    #         }
-    #     }
-    #     """,
-    # ]
-    # print(create_test_info(code_list))
-    llm_output = """
-<lib-javax.validation.constraints.Pattern>
-package javax.validation.constraints;
+    code_list = [
+        """
+        public class PositiveTest {
+            public static void main(String[] args) {
+                System.out.println("Hello, World!");
+            }
+        }
+        """,
+        """
+        // Positivetest: test case for positive test
+        public class Positivetest {
+            public static void main(String[] args) {
+                System.out.println("Hello, World);
+            }
+        }
+        """,
+    ]
+    test_info = create_test_info(code_list)
+    for k, v in test_info.items():
+        print(f"{k}: {len(v)}")
+        for i in v:
+            print(f"  {i[0]}: {i[1]}")
+#     llm_output = """
+# <lib-javax.validation.constraints.Pattern>
+# package javax.validation.constraints;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+# import java.lang.annotation.Documented;
+# import java.lang.annotation.ElementType;
+# import java.lang.annotation.Retention;
+# import java.lang.annotation.RetentionPolicy;
+# import java.lang.annotation.Target;
 
-@Documented
-@Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER, ElementType.ANNOTATION_TYPE})
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Pattern {
-    String regexp() default "";
-    String message() default "";
-    Class<?>[] groups() default {};
-    Class<?>[] payload() default {};
-}
-</lib-javax.validation.constraints.Pattern>
-"""
-    print(parse_lib_code(llm_output))
+# @Documented
+# @Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER, ElementType.ANNOTATION_TYPE})
+# @Retention(RetentionPolicy.RUNTIME)
+# public @interface Pattern {
+#     String regexp() default "";
+#     String message() default "";
+#     Class<?>[] groups() default {};
+#     Class<?>[] payload() default {};
+# }
+# </lib-javax.validation.constraints.Pattern>
+# """
+#     print(parse_lib_code(llm_output))

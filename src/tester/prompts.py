@@ -50,12 +50,12 @@ Never generate test cases that pass silently—only those explicitly flagged by 
 over rule descriptions (if provided), which often describe suggested proper behaviors while the checker reports improper ones. \
 2. Checking Scenario Coverage. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
 across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). 
-3. Minimal and Clear Code Structure. Keep code simple, minimal, and free of irrelevant logic. Prefer basic statements (e.g., separate calls) over \
-complex patterns (e.g., chained methods) unless explicitly required. For clearness, add brief, targeted comments to highlight test purposes and \
-distinctions between cases.
+3. Minimal and Clear Code Structure. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
+complex patterns (e.g., chained methods) unless explicitly required. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
+rather than checked ones (e.g., IOException) unless explicitly required. For clearness, add brief, targeted comments to highlight test purposes and distinctions between cases. 
 4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
 Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
-test case itself or correctly imported. Do not import unused classes. 
+test case itself or correctly imported. Do not import unused classes.
 5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
 which uses exact class naming "PositiveTest{{i}}" where {{i}} is the test index.
 6. Output Specification. Directly output each test case enclosed in separate "```java" and "```" blocks excluding detailed explanations.
@@ -126,8 +126,15 @@ PROMPTS[
 You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files \
 (warnings can be ignored). As inputs, I will provide you with a list of the Java code files, their mocked third-party library code as \
 dependencies and the error message. When compiling these Java files with the dependency libs, the compiler reports errors. \
-You need to fix these errors by modifying the Java files and the library code if necessary. \
-Keep the original code identifier naming, structure and logic as much as possible. \
+You need to resolve these errors by modifying the Java files and the library code if necessary. 
+
+### Madatory Guidelines for Fixing
+1. Fix Compilation Errors. Fix all compilation errors in the provided Java code files, while ignoring warnings. Since the error \
+message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing errors.
+2. Minimal Changes. Make minimum changes to pass compilation. While keep original code comments, do not add comments to explain the changes.
+3. Maintain Original Logic. Never change the original code logic, which can be inferred from the original code comments. Code comments \
+should be kept with the same intents.
+
 
 ### Input and Output Format
 For both input and output, each Java code file is wrapped in "<java_file>" and "</java_file>" and each library code is wrapped in \
@@ -135,10 +142,10 @@ For both input and output, each Java code file is wrapped in "<java_file>" and "
 and library code wrapped in the correct format. Unchanged code files and library code should also be output as they are.
 
 ### Input
-- Mock Library code files:
-{wrapped_lib_code}
 - Java code files:
 {wrapped_java_code}
+- Mock Library code files:
+{wrapped_lib_code}
 - Compilation error message:
 {error_msg}
 
@@ -151,7 +158,14 @@ PROMPTS[
 ## General Goal
 You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files \
 (warnings can be ignored). As inputs, I will provide you with a list of the Java code files and the compilation error message. \
-You need to generate the fixed Java code files that can pass compilation as output. \
+You need to generate the fixed Java code files that can pass compilation as output.  
+
+### Madatory Guidelines for Fixing
+1. Fix Compilation Errors. Fix all compilation errors in the provided Java code files, while ignoring warnings. Since the error \
+message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing errors.
+2. Minimal Changes. Make minimum changes to pass compilation. While keep original code comments, do not add comments to explain the changes.
+3. Maintain Original Logic. Never change the original code logic, which can be inferred from the original code comments. Code comments \
+should be kept with the same intents.
 
 ### Input and Output Format
 For both input and output, each Java code file must be wrapped in "<java_file>" and "</java_file>" with consistent order, where unchanged \

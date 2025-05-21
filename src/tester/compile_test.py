@@ -347,7 +347,7 @@ class TestCompiler:
             fix_attempts += 1
 
             # Initial test compilation
-            test_compile_status, error_msg = self.compile_test_code(do_log_error=False)
+            test_compile_status, error_msg = self.compile_test_code()
 
             # no third-party lib needed and pass initial compilation: directly return
             if test_compile_status:

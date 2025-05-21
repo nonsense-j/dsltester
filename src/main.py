@@ -100,9 +100,9 @@ def main():
         test_compile_status = test_compiler.compile_tests()
         if not test_compile_status:
             # TODO)) if status is False
-            # logger.error(f"Compilation failed for DSL {dsl_id}, skip...")
+            logger.error(f"Compilation failed for DSL {dsl_id}, skip...")
             # continue
-            assert False, f"Compilation failed for DSL {dsl_id}, exit..."
+            # assert False, f"Compilation failed for DSL {dsl_id}, exit..."
 
         # validate tests
         res = validate_tests(dsl_id)
