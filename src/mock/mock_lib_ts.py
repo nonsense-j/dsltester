@@ -640,13 +640,13 @@ class MockLibGenTS:
         logger.info(f"Generating mock lib for {len(self.test_filepaths)} tests in {self.test_dir} with tree-sitter...")
         jd_parser = JavaDependencyParser()
         jd_parser.parse_directory(self.test_dir)
-        logger.info(f"Lib Parser result for {self.test_dir}: \n{json.dumps(jd_parser.usage_info, indent=2)}")
+        logger.info(f"Lib Parser usage info for {self.test_dir}: \n{json.dumps(jd_parser.usage_info, indent=2)}")
         lib_code_map = jd_parser.gen_third_party_lib_code()
 
         if not lib_code_map:
             logger.info(f"No third-party dependencies output by tree-sitter.")
         else:
-            logger.info(f"Generated {len(lib_code_map)} third-party classes: \n{', '.join(lib_code_map.keys())}.")
+            logger.info(f"Found {len(lib_code_map)} third-party classes: \n{', '.join(lib_code_map.keys())}.")
         return lib_code_map
 
 

@@ -17,7 +17,7 @@ def query_llm_v1(messages: list, model_name: str = OPENAI_MODEL_NAME) -> tuple[s
     assert model_name, f"Model name {model_name} not provided"
 
     client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
-    chat_completion = client.chat.completions.create(model=model_name, messages=messages, temperature=0.7, stream=False)
+    chat_completion = client.chat.completions.create(model=model_name, messages=messages, temperature=0.1, stream=False)
     response = chat_completion.choices[0].message.content
 
     if "QWQ" in model_name or "Qwen" in model_name:

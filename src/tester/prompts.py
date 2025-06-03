@@ -46,8 +46,8 @@ Given a code checker written in the DSL format, please generate comprehensive an
 ## Important: Mandatory Guidelines for Test Case Generation
 Strictly adhere to these rules when creating test cases:
 1. Checker-Reportable Tests. Ensure every test case contains checker-matching code patterns to guarantee reportability. \
-Never generate test cases that pass silently—only those explicitly flagged by the checker. Notely, prioritize checker requirements \
-over rule descriptions (if provided), which often describe suggested proper behaviors while the checker reports improper ones. \
+Never generate test cases that pass silently—only those explicitly reported by the checker. Notely, prioritize checker requirements \
+over rule descriptions (if provided), whwere the rule often describes suggested proper behaviors while the checker reports improper ones. \
 2. Checking Scenario Coverage. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
 across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). For each test case, add clear, \
 targeted comments to highlight test purposes and distinctions between cases. 
@@ -66,7 +66,7 @@ which uses exact class naming "PositiveTest{{i}}" where {{i}} is the test index.
 ```dsl
 {dsl_input}
 ```
-### Output
+### Output Checker-Reportable Tests
 """
 
 PROMPTS[

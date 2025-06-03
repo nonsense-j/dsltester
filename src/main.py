@@ -7,7 +7,7 @@ from src.utils._helper import create_dir_with_path
 from src.utils._logger import logger, set_log_file
 from src.tester.parse_dsl import preprocess_dsl, save_dsl_prep_res
 from src.tester.gen_test import gen_pos_tests, save_test_info
-from src.tester.build_test import TestCompiler
+from tester.build_test import TestCompiler
 from src.tester.validate_test import validate_tests
 
 
