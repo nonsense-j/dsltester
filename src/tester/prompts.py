@@ -49,10 +49,11 @@ Strictly adhere to these rules when creating test cases:
 Never generate test cases that pass silently—only those explicitly flagged by the checker. Notely, prioritize checker requirements \
 over rule descriptions (if provided), which often describe suggested proper behaviors while the checker reports improper ones. \
 2. Checking Scenario Coverage. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
-across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). 
-3. Minimal and Clear Code Structure. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
-complex patterns (e.g., chained methods) unless explicitly required. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
-rather than checked ones (e.g., IOException) unless explicitly required. For clearness, add brief, targeted comments to highlight test purposes and distinctions between cases. 
+across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). For each test case, add clear, \
+targeted comments to highlight test purposes and distinctions between cases. 
+3. Minimal Code Structure. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
+complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
+rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
 Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
 test case itself or correctly imported. Do not import unused classes.
@@ -72,9 +73,8 @@ PROMPTS[
     "gen_mock_lib_code"
 ] = """\
 ## General Goal
-Write mock Java classes for third-party libraries used in a project, based on provided code snippets. Note that the project fail to compile due \
-to missing third-party dependencies, so do generate the mock third-party classes for the code snippets. The mocks must replicate exact method \
-signatures and field declarations referenced in the snippets, with minimum method bodies, default return \
+Write mock Java classes for third-party libraries used in a project, based on provided code snippets. \
+The mocks must replicate exact method signatures and field declarations referenced in the snippets, with minimum method bodies, default return \
 and field values (e.g., null, 0, false, '', etc.). Prioritize using Object as argument/return/field types when possible to simplify dependencies. 
 
 ### Output Format
@@ -131,8 +131,8 @@ You need to resolve these errors by modifying the Java files and the library cod
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Fix all compilation errors in the provided Java code files, while ignoring warnings. Since the error \
 message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems.
-2. Maintain Original Logic. Never change the original code logic, which can be inferred from the original code comments. \
-While keep original code comments, do not add comments to explain the changes. 
+2. Maintain Original Logic. Never change the original intent of each file, which is expressed in the original code comments. \
+While keep original code comments, do not add comments to explain the changes.
 3. Maintain Checker-Reportable Patterns. Ensure that the fixed Java code files still contain checker-matching code patterns to guarantee reportability. \
 The static code checker is written in dsl format as follows:
 <checker_dsl>

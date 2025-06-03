@@ -17,7 +17,7 @@ class MockLibGenLLM:
     A wrapper class for LLM to generate mock libraries for third-party packages.
     """
 
-    def __init__(self, test_dir: Path, potential_third_pkgs: list[str] = []):
+    def __init__(self, test_dir: Path, potential_third_fqns: list[str] = []):
         self.test_dir = test_dir
         assert test_dir.is_dir(), f"Test directory {test_dir} does not exist!"
 
@@ -27,11 +27,11 @@ class MockLibGenLLM:
         # code snippets for all test files
         self.all_test_code = ["\n\n".join([test_file.read_text(encoding="utf-8") for test_file in self.test_filepaths])]
 
-        # potential third-party packages -- additional info to help LLM generate mock lib code
-        self.potential_third_pkgs = potential_third_pkgs
+        # potential third-party classes in full qualified names -- additional info to help LLM generate mock lib code
+        self.potential_third_fqns = potential_third_fqns
 
-    def set_potential_third_pkgs(self, potential_third_pkgs: list[str]):
-        self.potential_third_pkgs = potential_third_pkgs
+    def set_potential_third_fqns(self, potential_third_fqns: list[str]):
+        self.potential_third_fqns = potential_third_fqns
 
     def gen_mock_lib_code_llm(self, retry_max_attempts: int = 1) -> dict[str, str]:
         """
@@ -44,8 +44,8 @@ class MockLibGenLLM:
 
         # construct the user prompt
         additional_info = ""
-        if self.potential_third_pkgs:
-            additional_info = f"""## Potential Third-party Packages\n{", ".join(self.potential_third_pkgs)}\n\n"""
+        if self.potential_third_fqns:
+            additional_info = f"""### Potential Third-party Classes\n{", ".join(self.potential_third_fqns)}\n\n"""
         prompt = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code, additional_info=additional_info)
 
         for attempts in range(retry_max_attempts + 1):

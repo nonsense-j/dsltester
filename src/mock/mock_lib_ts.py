@@ -156,7 +156,12 @@ class JavaDependencyParser:
             # construct the lib code
             package_name, class_name = class_fqn.rsplit(".", 1)
             lib_code = f"package {package_name};\n\n"
-            lib_code += f"public class {class_name} {{\n{class_body.rstrip()}\n}}"
+            if class_name.endswith("Exception"):
+                lib_code += f"public class {class_name} extends Exception {{\n{class_body.rstrip()}\n}}"
+            elif class_name.endswith("Error"):
+                lib_code += f"public class {class_name} extends Error {{\n{class_body.rstrip()}\n}}"
+            else:
+                lib_code += f"public class {class_name} {{\n{class_body.rstrip()}\n}}"
             res[class_fqn] = lib_code
         return res
 
