@@ -3,12 +3,11 @@ from pathlib import Path
 from typing import Optional
 
 from .parse_dsl import preprocess_dsl
-from .prompts import PROMPTS, SYS_PROMPTS
-
+from src.prompts import PROMPTS, SYS_PROMPTS
 from src.utils.types import TestInfoDict
 from src.utils._logger import logger
 from src.utils._llm import LLMWrapper
-from src.utils._helper import validate_syntax, create_dir_with_path, create_test_info
+from src.utils._helper import validate_syntax, create_test_info
 
 
 def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
@@ -92,15 +91,47 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
     return res
 
 
-def gen_pos_tests(dsl_text: str, add_info: bool = False, retry_max_attempts: int = 1) -> Optional[TestInfoDict]:
+def extract_checker_tests(llm_output: str, gen_type: str) -> TestInfoDict:
     """
-    Generate positive test cases for the given DSL.
+    extract alerting and non-alerting test cases from the LLM output.
+    """
+    assert gen_type in [
+        "all",
+        "alerting",
+        "non-alerting",
+    ], f"Invalid gen_test type: {gen_type}, should be one of ['all', 'alerting', 'non-alerting']"
+    alert_pattern = r"<alerting_java_file>\s*(.*?)\s*</alerting_java_file>"
+    alerting_test_list = re.findall(alert_pattern, llm_output, re.DOTALL)
+    alerting_test_list = [test_case for test_case in alerting_test_list if test_case.strip() != ""]
+    alerting_test_list = fix_syntax_error(alerting_test_list)
+
+    non_alert_pattern = r"<non_alerting_java_file>\s*(.*?)\s*</non_alerting_java_file>"
+    non_alerting_test_list = re.findall(non_alert_pattern, llm_output, re.DOTALL)
+    non_alerting_test_list = [test_case for test_case in non_alerting_test_list if test_case.strip() != ""]
+    non_alerting_test_list = fix_syntax_error(non_alerting_test_list)
+
+    return create_test_info(alerting_test_list, non_alerting_test_list)
+
+
+def gen_checker_tests(
+    checker_dsl: str, gen_type: str = "all", add_info: bool = False, retry_max_attempts: int = 1
+) -> Optional[TestInfoDict]:
+    """
+    Generate test cases for the given Checker DSL.
     Args:
-        dsl_text: The input dsl text.
+        checker_dsl: The Checker DSL to generate tests for.
+        gen_type: The type of tests to generate, can be "all", "alerting", or "non-alerting".
         add_info: Whether to add additional information (node_properties) to the prompt.
         retry_max_attempts: The maximum number of attempts to retry if parsed nothing.
+    Returns:
+        A TestInfoDict containing the generated test cases, or None if no valid test cases are generated.
     """
-    logger.info(f"==> Generating positive test cases")
+    assert gen_type in [
+        "all",
+        "alerting",
+        "non-alerting",
+    ], f"Invalid gen_test type: {gen_type}, should be one of ['all', 'alerting', 'non-alerting']"
+    logger.info(f"==> Generating {gen_type} test cases")
 
     # construct the user prompt
     additional_info = ""
@@ -109,51 +140,38 @@ def gen_pos_tests(dsl_text: str, add_info: bool = False, retry_max_attempts: int
         additional_info = additional_info_md.read_text(encoding="utf-8")
 
     sys_prompt = SYS_PROMPTS["gen_tests"]
-    user_prompt = PROMPTS["gen_pos_tests"].format(
+    prompt_map = {
+        "all": "gen_all_tests",
+        "alerting": "gen_alerting_tests",
+        "non-alerting": "gen_non_alerting_tests",
+    }
+    query_type = prompt_map[gen_type]
+    user_prompt = PROMPTS[query_type].format(
         additional_info=additional_info,
-        dsl_input=dsl_text,
+        dsl_input=checker_dsl,
     )
 
     for attempt in range(retry_max_attempts + 1):
         if attempt > 0:
             # 0 is the first attempt, others are retries
-            logger.warning(
-                f"--> [Detected LLM GenPosTetss Failure] Retrying (attempt {attempt}/{retry_max_attempts})..."
-            )
+            logger.warning(f"--> [Detected LLM GenTest Failure] Retrying (attempt {attempt}/{retry_max_attempts})...")
         # query the LLM
-        llm_response = LLMWrapper.query_llm(user_prompt, system_prompt=sys_prompt, query_type="gen_pos_tests")
+        llm_response = LLMWrapper.query_llm(user_prompt, system_prompt=sys_prompt, query_type=query_type)
         logger.debug(f"LLM TestGenerator result: \n{llm_response}")
         # parse the response
-        pattern = r"```java\s*(.*?)\s*```"
-        test_case_list = re.findall(pattern, llm_response, re.DOTALL)
-        test_case_list = [test_case for test_case in test_case_list if test_case.strip() != ""]
-
-        # validate and fix the syntax of the test cases
-        test_case_list = fix_syntax_error(test_case_list)
-        if test_case_list:
-            return create_test_info(test_case_list)
+        test_info = extract_checker_tests(llm_response, gen_type)
+        if gen_type in ["alerting", "all"] and len(test_info["alerting"]) == 0:
+            logger.error(
+                f"--> [Detected LLM GenTest Failure] No Alerting test cases generated! Please check the LLM output."
+            )
+        elif gen_type in ["non-alerting", "all"] and len(test_info["non_alerting"]) == 0:
+            logger.error(
+                f"--> [Detected LLM GenTest Failure] No Non-Alerting test cases generated! Please check the LLM output."
+            )
+        else:
+            return test_info
 
     logger.error(
-        f"--> [Detected LLM GenPosTests Failure] failed after {retry_max_attempts} attempts! Please check the LLM output."
+        f"--> [Detected LLM GenTest Failure] failed after {retry_max_attempts} attempts! Please check the LLM output."
     )
     return None
-
-
-def save_test_info(test_info: TestInfoDict, test_dir: Path) -> None:
-    """
-    Save the test information to the test directory.
-    Args:
-        test_info (TestInfoDict): The test information dictionary.
-        test_dir (Path): The test directory path.
-    """
-    assert test_dir.is_dir(), f"--> Test directory {test_dir} not found!"
-    create_dir_with_path(test_dir, cleanup=True)
-
-    for label, sub_test_info in test_info.items():
-        logger.info(f"Saving {len(sub_test_info)} {label} test cases...")
-        for single_test_info in sub_test_info:
-            file_stem, test_case_code = single_test_info
-            test_case_path = test_dir / f"{file_stem}.java"
-            test_case_path.write_text(test_case_code, encoding="utf-8")
-
-    logger.info(f"All test cases saved to {test_dir}")

@@ -12,8 +12,8 @@ class DslInfoDict(TypedDict):
 
 class TestInfoDict(TypedDict):
     # file_stem: code
-    positive: List[tuple[str, str]]
-    negative: List[tuple[str, str]]
+    alerting: List[tuple[str, str]]
+    non_alerting: List[tuple[str, str]]
     unknown: List[tuple[str, str]]
 
 

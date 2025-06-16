@@ -6,7 +6,7 @@ This module is used to generate mock libraries for third-party packages using LL
 import re
 from pathlib import Path
 
-from src.tester.prompts import PROMPTS
+from src.prompts import PROMPTS
 from src.utils._logger import logger
 from src.utils._llm import LLMWrapper
 from src.utils._helper import is_third_class, parse_lib_code

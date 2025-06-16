@@ -130,7 +130,7 @@ def save_dsl_prep_result(dsl_prep_result: DslPrepResDict, save_dir: Path):
 
 def extract_main_class(test_case: str) -> str:
     """
-    classify test case into positive, negative or unknown
+    extract the main class name.
     :param test_case: test case
     :return: main class name
     """
@@ -165,31 +165,56 @@ def update_main_class(test_case: str, class_name: str) -> str:
     return new_test_case
 
 
-def create_test_info(test_case_list: list[str]) -> TestInfoDict:
+def create_test_info(alerting_test_list: list[str], non_alerting_test_list) -> TestInfoDict:
+    """
+    create test info dict based on the two types of test case list (checking the class name and reordering)
+    :param alerting_test_list: list of alerting test cases
+    :param non_alerting_test_list: list of non-alerting test cases
+    :return: test info dict
+    """
+    test_info = TestInfoDict(alerting=[], non_alerting=[])
+    for i, test_case in enumerate(alerting_test_list):
+        class_name = extract_main_class(test_case)
+        expected_class_name = f"AlertingTest{i + 1}"
+        if class_name != f"AlertingTest{i}":
+            test_case = update_main_class(test_case, expected_class_name)
+        test_info["alerting"].append((expected_class_name, test_case))
+
+    for i, test_case in enumerate(non_alerting_test_list):
+        class_name = extract_main_class(test_case)
+        expected_class_name = f"NonAlertingTest{i + 1}"
+        if class_name != expected_class_name:
+            test_case = update_main_class(test_case, expected_class_name)
+        test_info["non_alerting"].append((expected_class_name, test_case))
+
+    return test_info
+
+
+def create_test_info_wo_label(test_case_list: list[str]) -> TestInfoDict:
     """
     create test info dict based on the test case list (for each test, identify the type)
     :param test_case_list: list of test cases
     :return: test info dict
     """
     test_info = TestInfoDict(
-        positive=[],
-        negative=[],
+        alerting=[],
+        non_alerting=[],
         unknown=[],
     )
     for test_case in test_case_list:
         class_name = extract_main_class(test_case)
-        if "positive" in class_name.lower():
-            i = len(test_info["positive"]) + 1
-            expected_class_name = f"PositiveTest{i}"
+        if class_name.lower().startswith("alerting"):
+            i = len(test_info["alerting"]) + 1
+            expected_class_name = f"AlertingTest{i}"
             if class_name != expected_class_name:
                 test_case = update_main_class(test_case, expected_class_name)
-            test_info["positive"].append((expected_class_name, test_case))
-        elif "negative" in test_case.lower():
-            i = len(test_info["negative"]) + 1
-            expected_class_name = f"NegativeTest{i}"
+            test_info["alerting"].append((expected_class_name, test_case))
+        elif class_name.lower().startswith("nonalerting"):
+            i = len(test_info["non_alerting"]) + 1
+            expected_class_name = f"NonAlertingTest{i}"
             if class_name != expected_class_name:
                 test_case = update_main_class(test_case, expected_class_name)
-            test_info["negative"].append((expected_class_name, test_case))
+            test_info["non_alerting"].append((expected_class_name, test_case))
         else:
             i = len(test_info["unknown"]) + 1
             expected_class_name = f"UnknownTest{i}"
@@ -197,6 +222,33 @@ def create_test_info(test_case_list: list[str]) -> TestInfoDict:
                 test_case = update_main_class(test_case, expected_class_name)
             test_info["unknown"].append((expected_class_name, test_case))
     return test_info
+
+
+def save_test_info(test_info: TestInfoDict, test_dir: Path) -> None:
+    """
+    Save the test information to the test directory.
+    Args:
+        test_info (TestInfoDict): The test information dictionary.
+        test_dir (Path): The test directory path.
+    """
+    assert test_dir.is_dir(), f"--> Test directory {test_dir} not found!"
+    create_dir_with_path(test_dir, cleanup=True)
+
+    sub_test_dir_map = {
+        "alerting": test_dir / "alert",
+        "non_alerting": test_dir / "no-alert",
+        "unknown": test_dir / "unk",
+    }
+
+    for label, sub_test_info in test_info.items():
+        logger.info(f"Saving {len(sub_test_info)} {label} test cases...")
+        sub_test_dir = sub_test_dir_map[label]
+        for single_test_info in sub_test_info:
+            file_stem, test_case_code = single_test_info
+            test_case_path = sub_test_dir / f"{file_stem}.java"
+            test_case_path.write_text(test_case_code, encoding="utf-8")
+
+    logger.info(f"All test cases saved to {test_dir}")
 
 
 def parse_lib_code(llm_result: str) -> dict[str, str]:

@@ -3,11 +3,11 @@ from pathlib import Path
 
 from src.utils._llm import LLMWrapper
 from src.utils.types import DslInfoDict
-from src.utils._helper import create_dir_with_path
+from src.utils._helper import create_dir_with_path, save_test_info
 from src.utils._logger import logger, set_log_file
 from src.tester.parse_dsl import preprocess_dsl, save_dsl_prep_res
-from src.tester.gen_test import gen_pos_tests, save_test_info
-from tester.build_test import TestCompiler
+from src.tester.gen_test import gen_checker_tests
+from src.tester.build_test import TestCompiler
 from src.tester.validate_test import validate_tests
 
 
@@ -54,6 +54,54 @@ def initialize_dsl_ws(dsl_info: DslInfoDict, do_clean_up: bool = False):
     create_dir_with_path(report_ws, cleanup=True)
 
 
+def gen_flow_once(dsl_info: DslInfoDict, gen_type: str = "all", use_exist_tests: bool = False):
+    """
+    Generate tests and validate for a single DSL as a complete flow.
+    :param dsl_info: The DSL information dictionary containing 'id' and 'dsl'.
+    :param gen_type: The type of tests to generate, can be "all", "alerting", or "non-alerting".
+    :param use_exist_tests: Whether to use existing tests if available.
+    """
+    assert gen_type in [
+        "all",
+        "alerting",
+        "non-alerting",
+    ], f"Invalid gen_type: {gen_type}, should be one of ['all', 'alerting', 'non-alerting']"
+    dsl_id = dsl_info["id"]
+
+    # initialize DSL workspace
+    initialize_dsl_ws(dsl_info)
+
+    # preprocess the DSL and save the result
+    dsl_ws = Path("kirin_ws") / dsl_id
+    dsl_prep_res = preprocess_dsl(dsl_info["dsl"])
+    save_dsl_prep_res(dsl_prep_res, dsl_ws / "dsl")
+
+    # generate dsl test
+    # Currently, we only generate tests for the first node
+    test_dir = dsl_ws / "test"
+    test_case_count = len(list(test_dir.rglob("*.java")))
+    if test_case_count > 0 and use_exist_tests:
+        logger.info(f"Found {test_case_count} test cases in {test_dir}, skip...")
+    else:
+        checker_dsl = dsl_prep_res["node_dsl_list"][0]
+        test_info = gen_checker_tests(checker_dsl, gen_type, add_info=False)
+        assert test_info, f"Failed to generate test cases for DSL {dsl_id}"
+        save_test_info(test_info, dsl_ws / "test")
+
+    # try to compile the test cases (mock lib + compile lib + compile test)
+    test_compiler = TestCompiler(dsl_id)
+    test_compile_status = test_compiler.build_tests(fix_max_attempts=2)
+    if not test_compile_status:
+        # TODO)) if status is False
+        logger.error(f"Compilation failed for DSL {dsl_id}, skip...")
+        # continue
+        # assert False, f"Compilation failed for DSL {dsl_id}, exit..."
+
+    # validate tests
+    dsl_val_res = validate_tests(dsl_id)
+    return dsl_val_res
+
+
 def main():
     """
     Main function to run the Kirin DSL analysis.
@@ -73,47 +121,16 @@ def main():
         logger.info(f"====== Processing DSL #{i + 1}/{len(dsl_info_list)} ======")
         # reset the LLM API call record for single data item
         LLMWrapper.reset_single_record()
-        dsl_id = dsl_info["id"]
 
-        # initialize DSL workspace
-        initialize_dsl_ws(dsl_info)
-
-        # preprocess the DSL and save the result
-        dsl_ws = Path("kirin_ws") / dsl_id
-        dsl_prep_res = preprocess_dsl(dsl_info["dsl"])
-        save_dsl_prep_res(dsl_prep_res, dsl_ws / "dsl")
-
-        # generate dsl test
-        # Currently, we only generate tests for the first node
-        test_dir = dsl_ws / "test"
-        test_case_count = len(list(test_dir.rglob("*.java")))
-        if test_case_count > 0:
-            logger.info(f"Found {test_case_count} test cases in {test_dir}, skip...")
-        else:
-            input_dsl_text = dsl_prep_res["node_dsl_list"][0]
-            test_info = gen_pos_tests(input_dsl_text)
-            assert test_info, f"Failed to generate test cases for DSL {dsl_id}"
-            save_test_info(test_info, dsl_ws / "test")
-
-        # try to compile the test cases (mock lib + compile lib + compile test)
-        test_compiler = TestCompiler(dsl_id)
-        test_compile_status = test_compiler.build_tests(fix_max_attempts=2)
-        if not test_compile_status:
-            # TODO)) if status is False
-            logger.error(f"Compilation failed for DSL {dsl_id}, skip...")
-            # continue
-            # assert False, f"Compilation failed for DSL {dsl_id}, exit..."
-
-        # validate tests
-        res = validate_tests(dsl_id)
-        final_result.append({dsl_info["id"]: res})
-
+        val_res = gen_flow_once(dsl_info, gen_type="all", use_exist_tests=False)
+        # collect the result
+        final_result.append({dsl_info["id"]: val_res})
         with open(res_path, "w", encoding="utf-8") as f:
             json.dump(final_result, f, indent=4, ensure_ascii=False, sort_keys=True)
         logger.info(f"DSL #{i+1} validation result saved to {res_path}")
 
         LLMWrapper.log_single_record()
-        single_record_path = dsl_ws / f"llm-record.json"
+        single_record_path = Path("kirin_ws") / dsl_info["id"] / f"llm-record.json"
         with open(single_record_path, "w", encoding="utf-8") as f:
             json.dump(LLMWrapper.single_call_chain, f, indent=4, ensure_ascii=False)
 

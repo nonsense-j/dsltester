@@ -72,7 +72,7 @@ def preprocess_dsl(
     :param spec_na_strategy: Whether to use special strategy for "not and"
     :param split_not_has: Whether to split not has
     :param do_format: Whether to format each DSL text
-    :return: cleaned dsl, Decomposed dsls [[node1_sub_1, node1_sub_2], [node2_sub_1, node2_sub_2] ... ]
+    :return: node_dsl_list, sub_dsl_collection ([[node1_sub_1, node1_sub_2], [node2_sub_1, node2_sub_2] ... ])
     """
     if init_transform:
         logger.info("==> Preprocess DSL in the opposite setting")
@@ -165,9 +165,9 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path) -> None:
 
 if __name__ == "__main__":
     # Test the parse_dsl function
-    dsl_path = Path("data/tmp/tmp_new.kirin")
+    dsl_path = Path("data/tmp/test_func.kirin")
     dsl_text = dsl_path.read_text(encoding="utf-8")
-    dsl_prep_res = preprocess_dsl(dsl_text, init_transform=False, split_not_has=True, do_format=True)
+    dsl_prep_res = preprocess_dsl(dsl_text, init_transform=True, split_not_has=True, do_format=True)
 
     result_str = "==> Preprocess Result:\n"
 

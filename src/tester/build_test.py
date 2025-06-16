@@ -8,19 +8,15 @@ import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from src.prompts import PROMPTS
 from src.utils._logger import logger
-from src.tester.prompts import PROMPTS
 from src.utils.config import KIRIN_JAVA_HOME
-from src.mock.mock_lib_llm import MockLibGenLLM
-from src.mock.mock_lib_ts import MockLibGenTS
+from src.mocker.mock_lib_llm import MockLibGenLLM
+from src.mocker.mock_lib_ts import MockLibGenTS
 from src.utils._llm import LLMWrapper
-from src.tester.gen_test import fix_syntax_error, save_test_info
+from src.tester.gen_test import fix_syntax_error
 from src.tester.edit_test import TestEditor
-from src.utils._helper import (
-    create_dir_with_path,
-    parse_lib_code,
-    create_test_info,
-)
+from src.utils._helper import create_dir_with_path, parse_lib_code
 
 
 class TestCompiler:
@@ -242,26 +238,24 @@ class TestCompiler:
         self, error_map: dict[str, str], retry_max_attempts: int = 1
     ) -> tuple[list[str], dict[str, str]]:
         """
-        Fix the mock lib code to make it pass compilation for package.
+        Fix the failed test cases and mock lib code (if needed) to make them pass compilation for package.
         :param error_map: The error message map from the compilation.
         :param retry_max_attempts: The maximum number of times to retry if parsed nothing.
-        :return: [test1, test2], {"{class_fqn}": "{mock_code}"}
+        :return: {test_file_path: fixed_test_file}, {class_fqn: mock_code"}
         """
+        fixed_test_map = dict()
         # construct the messages
         wrapped_java_code = ""
-        full_test_case_list = []
-        failed_ids = []
-        for i, test_file in enumerate(self.test_filepaths_str):
+        full_error_msg = ""
+        failed_test_file_list = sorted(error_map.keys())
+        for test_file in failed_test_file_list:
             test_code = Path(test_file).read_text(encoding="utf-8")
-            if test_file in error_map:
-                wrapped_java_code += f"<java_file>\n{test_code}\n</java_file>\n"
-                full_test_case_list.append("")
-                failed_ids.append(i)
-            else:
-                full_test_case_list.append(test_code)
+            wrapped_java_code += f"<java_file>\n{test_code}\n</java_file>\n"
+            full_error_msg += error_map[test_file] + "\n"
+        wrapped_java_code = wrapped_java_code.rstrip()
+        full_error_msg = full_error_msg.rstrip()
 
-        sorted_keys = sorted(error_map.keys())
-        error_msg = "\n".join([error_map[key] for key in sorted_keys])
+        # check if dependency lib is needed
         if self.need_third_party_lib:
             wrapped_lib_code = ""
             for lib_file in self.mock_tmp_dir.rglob("*.java"):
@@ -274,14 +268,14 @@ class TestCompiler:
                 dsl_input=self.checker_dsl,
                 wrapped_java_code=wrapped_java_code,
                 wrapped_lib_code=wrapped_lib_code,
-                error_msg=error_msg,
+                error_msg=full_error_msg,
             )
         else:
             query_type = "fix_test_compile_wo_lib"
             user_prompt = PROMPTS[query_type].format(
                 dsl_input=self.checker_dsl,
                 wrapped_java_code=wrapped_java_code,
-                error_msg=error_msg,
+                error_msg=full_error_msg,
             )
 
         # query the LLM with retry if needed
@@ -305,12 +299,12 @@ class TestCompiler:
                 )
             else:
                 # replace the test cases with the fixed ones in full_test_case_list
-                for i, ori_i in enumerate(failed_ids):
-                    full_test_case_list[ori_i] = test_case_list[i]
-                return full_test_case_list, lib_res
+                for i, test_file in enumerate(failed_test_file_list):
+                    fixed_test_map[test_file] = test_case_list[i]
+                return fixed_test_map, lib_res
 
         logger.error(f"--> LLM FixTest failed after {retry_max_attempts} attempts! Please check the LLM output.")
-        return [], dict()
+        return dict(), dict()
 
     def clear_mock_lib(self) -> bool:
         """
@@ -399,7 +393,8 @@ class TestCompiler:
 
         fix_attempts = 0
         test_compile_status = False
-        while not test_compile_status and fix_attempts < fix_max_attempts:
+        error_map = dict()
+        while not test_compile_status:
             # Test compilation
             test_compile_status, error_map = self.compile_test_code()
             if test_compile_status:
@@ -421,18 +416,24 @@ class TestCompiler:
                 continue
 
             fix_attempts += 1  # only increase after using LLM to fix
+            if fix_attempts > fix_max_attempts:
+                logger.warning(
+                    f"--> Failed to compile test cases for {self.dsl_id} after {fix_max_attempts} fixing attempts!"
+                )
+                break
+
             logger.warning(
                 f"--> [Detected LLM CompileTest Failure] Fixing with LLM[attemp-{fix_attempts}/{fix_max_attempts}]..."
             )
 
-            fixed_test_list, fixed_lib_res = self.fix_test_compile(error_map)
-            if not fixed_test_list:
+            fixed_test_map, fixed_lib_res = self.fix_test_compile(error_map)
+            if not fixed_test_map:
                 logger.error(f"--> Exit test build for {self.dsl_id} since fixing tests failed!")
-                return False
-            # save tests and lib code
-            fixed_test_info = create_test_info(fixed_test_list)
+                break
+            # replace tests and lib code
             logger.info(f"Installing fixed test cases...")
-            save_test_info(fixed_test_info, self.test_dir)
+            for test_file in fixed_test_map:
+                Path(test_file).write_text(fixed_test_map[test_file], encoding="utf-8")
             if fixed_lib_res:
                 logger.info(f"Installing fixed lib code...")
                 self.install_lib_code(fixed_lib_res)
@@ -444,6 +445,11 @@ class TestCompiler:
             logger.warning(
                 f"--> Failed to compile test cases for {self.dsl_id} after {fix_max_attempts} fixing attempts!"
             )
+            if error_map:
+                failed_test_file = ", ".join(list(error_map.keys()))
+                logger.error(
+                    f"{len(error_map.keys())} test cases failed to compile but are still kept in {self.test_dir}:\n {failed_test_file}"
+                )
 
         return test_compile_status
 

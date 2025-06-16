@@ -13,41 +13,13 @@ PROMPTS[
     "gen_all_tests"
 ] = """\
 ## General Goal
-Given a code checker written in the DSL format, please generate comprehensive test cases (Java codes) for me. 
-
-## Additional information
-### Explanations of DSL nodes and corresponding properties to better understand checkers in DSL formats
-{node_properties}
-
-## Notice: Must-follow guidelines
-Here are detailed guildlines that you must always bear in mind and follow:
-1. Test cases include both positive ones that will be reported by the checker and negative ones that pass the checker without issues.
-2. Every test case should be able to pass compilation and keep minimal, excluding any code statements that are irrelevant to the checker.
-3. Include simple, necessary comments to clarify the purpose of each test case and the label ("positive" or "negative").
-4. Ensure that each case covering the same checking scenario only occurs once and that all possible scenarios are covered.
-5. Test cases should be generally similar but vary in some specific code parts that reflect the differences of their checking scenarios.
-6. Output test cases to me without detailed explanations and every test case must be independently surrounded with "```java" and "```".
-
-## Your Task
-### Checker DSL
-```dsl
-{dsl_input}
-```
-### Output
-"""
-
-PROMPTS[
-    "gen_pos_tests"
-] = """\
-## General Goal
-Given a code checker written in the DSL format, please generate comprehensive and concise test cases (Java codes) that the checker can report. 
+Given a code checker written in the DSL format, please generate comprehensive and concise test cases (Java code) for the checker, including alerting and non-alerting tests. 
 
 {additional_info}
 ## Important: Mandatory Guidelines for Test Case Generation
 Strictly adhere to these rules when creating test cases:
-1. Checker-Reportable Tests. Ensure every test case contains checker-matching code patterns to guarantee reportability. \
-Never generate test cases that pass silently—only those explicitly reported by the checker. Notely, prioritize checker requirements \
-over rule descriptions (if provided), whwere the rule often describes suggested proper behaviors while the checker reports improper ones. \
+1. All Tests. Alerting tests must contain checker-matching code patterns and can be reported by the checker, while non-alerting tests must not contain such patterns. \
+Both types of tests should be generated with minimal overlapping logic.
 2. Checking Scenario Coverage. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
 across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). For each test case, add clear, \
 targeted comments to highlight test purposes and distinctions between cases. 
@@ -58,16 +30,84 @@ rather than checked ones (e.g., IOException) unless explicitly required in the c
 Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
 test case itself or correctly imported. Do not import unused classes.
 5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
-which uses exact class naming "PositiveTest{{i}}" where {{i}} is the test index.
-6. Output Specification. Directly output each test case enclosed in separate "```java" and "```" blocks excluding detailed explanations.
+which uses exact class naming "AlertingTest{{i}}" and "NonAlertingTest{{j}}" where {{i}} refers to the index of alerting tests and {{j}} for the non-alerting tests, \
+both starting from 1.
+6. Output Specification. Directly output test cases excluding detailed explanations, with alerting tests wrapped in "<alerting_java_file>" and "</alerting_java_file>", \
+and non-alerting tests wrapped in "<non_alerting_java_file>" and "</non_alerting_java_file>".
 
 ### Your Task
 ### Checker DSL
 ```dsl
 {dsl_input}
 ```
-### Output Checker-Reportable Tests
+### Output Tests
 """
+
+PROMPTS[
+    "gen_alerting_tests"
+] = """\
+## General Goal
+Given a code checker written in the DSL format, please generate comprehensive and concise test cases (Java code) that the checker can report. 
+
+{additional_info}
+## Important: Mandatory Guidelines for Test Case Generation
+Strictly adhere to these rules when creating test cases:
+1. Checker-Reportable Tests. Ensure every test case contains checker-matching code patterns to guarantee reportability. \
+Never generate test cases that pass silently—only those explicitly reported by the checker. Notely, prioritize checker requirements \
+over rule descriptions (if provided), where the rule often describes suggested proper behaviors while the checker reports improper ones. \
+2. Checking Scenario Coverage. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
+across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). For each test case, add clear, \
+targeted comments to highlight test purposes and distinctions between cases. 
+3. Minimal Code Structure. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
+complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
+rather than checked ones (e.g., IOException) unless explicitly required in the checker.
+4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
+Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
+test case itself or correctly imported. Do not import unused classes.
+5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
+which uses exact class naming "AlertingTest{{i}}" where {{i}} is the test index, starting from 1.
+6. Output Specification. Directly output each test case enclosed in separate "<alerting_java_file>" and "</alerting_java_file>" blocks excluding detailed explanations.
+
+### Your Task
+### Checker DSL
+```dsl
+{dsl_input}
+```
+### Output Alerting Tests
+"""
+
+PROMPTS[
+    "gen_non_alerting_tests"
+] = """\
+## General Goal
+Given a code checker written in the DSL format, please generate comprehensive and concise test cases (Java code) that the checker will not report. 
+
+{additional_info}
+## Important: Mandatory Guidelines for Test Case Generation
+Strictly adhere to these rules when creating test cases:
+1. Checker-Passing Tests. Ensure every test case doesn't contain checker-matching code patterns to guarantee that it will not be reported by the checker. \
+I only care about these non-alerting test cases, which are often compliant examples for the inherent rule of the checker.
+2. Checking Scenario Coverage. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
+across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). For each test case, add clear, \
+targeted comments to highlight test purposes and distinctions between cases. 
+3. Minimal Code Structure. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
+complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
+rather than checked ones (e.g., IOException) unless explicitly required in the checker.
+4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
+Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
+test case itself or correctly imported. Do not import unused classes.
+5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
+which uses exact class naming "NonAlertingTest{{i}}" where {{i}} is the test index, starting from 1.
+6. Output Specification. Directly output each test case enclosed in separate "<non_alerting_java_file>" and "</non_alerting_java_file>" blocks excluding detailed explanations.
+
+### Your Task
+### Checker DSL
+```dsl
+{dsl_input}
+```
+### Output Non-Alerting Tests
+"""
+
 
 PROMPTS[
     "gen_mock_lib_code"

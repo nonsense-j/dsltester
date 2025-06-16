@@ -11,7 +11,7 @@ functionCall fc where
 ```
 ### Output:
 ```java
-public class PositiveTest1 {
+public class AlertingTest1 {
     public boolean testMatches(String input) {
         return input.matches("abc"); // matches() is not inside a function with "check", "valid", or "verify" in its name
     }

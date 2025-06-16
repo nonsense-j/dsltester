@@ -45,9 +45,9 @@ class TestEditor:
                 else:
                     logger.error(f"Test file {file_name} does not exist.")
         if do_fix_flag:
-            logger.info("Finish Fixing general errors in test files.")
+            logger.info("Finish fixing general errors in test files, try re-compiling...")
         else:
-            logger.info("No general errors found in test files, skipping.")
+            logger.info("No general errors found in test files, skipping...")
         return do_fix_flag
 
     @classmethod
@@ -55,7 +55,8 @@ class TestEditor:
         cls, test_file: Path, error_line: int, default_exception="Exception", do_replace=False
     ) -> str:
         """
-        Fix unsupported exception in the test file by adding "throws Exception" or "throws Error" to the method containing the error.
+        Fix unsupported exception in the test file by adding "throws Exception" or "throws Error" to the method containing the error line,
+        also add the default exception to enclosing method that invoking the target method.
         :param test_file: Path to the test file.
         :param error_line: The line containing the compilation error. (starting from 1)
         :return: The transformed code with the exception fixed.
@@ -65,6 +66,9 @@ class TestEditor:
             code = f.read()
         fixed_code = ""
 
+        # all methods need to be declared with throws Exception or throws Error
+        edit_method_nodes = []
+
         # Find the method node containing the specified line number
         tree = cls.parser.parse(bytes(code, "utf8"))
         root_node = tree.root_node
@@ -73,30 +77,70 @@ class TestEditor:
             (method_declaration) @method_decl
             """
         )
-        captures = method_decl_query.captures(root_node)
-        for node in captures.get("method_decl", []):
+        method_decl_captures = method_decl_query.captures(root_node)
+        method_decl_nodes = method_decl_captures.get("method_decl", [])
+        target_method_node = None
+        for node in method_decl_nodes:
             start_line = node.start_point[0]  # start from 0
             end_line = node.end_point[0]  # end at 0
             if start_line <= error_line - 1 <= end_line:
-                # substitute existing throws clause as default and add the default exception
-                method_code = node.text.decode("utf-8")
-                if "throws" in method_code:
-                    # replace existing throws clause
-                    fixed_method_code = re.sub(r"throws\s+\w+", f"throws {default_exception}", method_code)
-                else:
-                    # add throws clause befor the first {
-                    fixed_method_code = re.sub(
-                        r"^([^{]*)\{",
-                        lambda m: f"{m.group(1).rstrip()} throws {default_exception} {{",
-                        method_code,
-                        count=1,
-                    )
-                # replace the method code in the original code
-                fixed_code = code.replace(method_code, fixed_method_code)
+                if target_method_node is None or target_method_node.startpoint[0] >= start_line:
+                    target_method_node = node
+        assert target_method_node is not None, f"Cannot find target method containing line {error_line} in {test_file}"
+        target_method_name = target_method_node.child_by_field_name("name").text.decode("utf-8")
+        edit_method_nodes.append(target_method_node)
 
-                if do_replace:
-                    test_file.write_text(fixed_code, encoding="utf-8")
-                    logger.info(f"Fixed unsupported exception in {test_file} at line {error_line}.")
+        # find enclosing methods that may implicitly invoke the target method
+        target_method_names = {target_method_name}
+        while target_method_names:
+            match_pattern = "|".join(target_method_names)
+            target_method_names.clear()
+            method_call_query = cls.JAVA_LANGUAGE.query(
+                f"""
+                (method_invocation
+                    name: (identifier) @method_name
+                    (#match? @method_name "^({match_pattern})$")
+                ) @method_call
+                """
+            )
+            method_call_captures = method_call_query.captures(root_node)
+            if not method_call_captures:
+                break
+            for method_call_node in method_call_captures.get("method_call", []):
+                # get the enclosing method node
+                parent_node = method_call_node.parent
+                while parent_node is not None and parent_node.type != "method_declaration":
+                    parent_node = parent_node.parent
+                enclosing_method_node = parent_node
+                if enclosing_method_node:
+                    edit_method_nodes.append(enclosing_method_node)
+                    target_method_names.add(enclosing_method_node.child_by_field_name("name").text.decode("utf-8"))
+
+        # edit all methods
+        method_sigs_to_fix = set()
+        for method_node in edit_method_nodes:
+            # only edit the method signature before {
+            method_body_node = method_node.child_by_field_name("body")
+            body_start = method_body_node.start_byte - method_node.start_byte
+            method_sig = method_node.text[:body_start].decode("utf-8").strip()
+            method_sigs_to_fix.add(method_sig)
+        fixed_code = code
+        for method_sig in method_sigs_to_fix:
+            fixed_method_sig = method_sig
+            if "throws" in method_sig:
+                # replace existing throws clause
+                fixed_method_sig = re.sub(r"throws.*$", f"throws {default_exception}", method_sig)
+            else:
+                # add throws clause befor the first {
+                fixed_method_sig += f" throws {default_exception}"
+            # replace the method code in the original code
+            fixed_code = fixed_code.replace(method_sig, fixed_method_sig)
+
+        if do_replace:
+            test_file.write_text(fixed_code, encoding="utf-8")
+            logger.info(
+                f"Fixed unsupported exception in {test_file} at line {error_line} for {len(edit_method_nodes)} methods."
+            )
 
         return fixed_code
 

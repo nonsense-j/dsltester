@@ -5,9 +5,9 @@ Preprocess the Kirin DSL for decomposition.
 import hashlib, re
 from antlr4 import *
 
-from src.kirin.HornLexer import HornLexer
-from src.kirin.DslParser import DslParser
-from src.kirin.DslParserVisitor import DslParserVisitor
+from src.resources.kirin.HornLexer import HornLexer
+from src.resources.kirin.DslParser import DslParser
+from src.resources.kirin.DslParserVisitor import DslParserVisitor
 from src.utils._logger import logger
 from src.utils._helper import is_third_class
 
