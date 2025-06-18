@@ -80,8 +80,7 @@ def parse_xml_results(dsl_id) -> dict[str, DslValResDict]:
     checker_dir = Path(f"kirin_ws/{dsl_id}/dsl")
     # collect all .kirin file in checker_dir and its sub_dir recursively into the checker_list
 
-    checker_list = list(checker_dir.glob("**/*.kirin"))
-    for checker_file in checker_list:
+    for checker_file in checker_dir.glob("**/*.kirin"):
         checker_name = checker_file.stem
         if checker_name not in result:
             result[checker_name] = {"report": dict(), "pass": sorted(list(scan_files))}

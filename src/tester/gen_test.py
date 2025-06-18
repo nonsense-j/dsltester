@@ -91,7 +91,7 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
     return res
 
 
-def extract_checker_tests(llm_output: str, gen_type: str) -> TestInfoDict:
+def extract_checker_tests(llm_output: str, gen_type: str) -> tuple[list[str], list[str]]:
     """
     extract alerting and non-alerting test cases from the LLM output.
     """
@@ -110,21 +110,26 @@ def extract_checker_tests(llm_output: str, gen_type: str) -> TestInfoDict:
     non_alerting_test_list = [test_case for test_case in non_alerting_test_list if test_case.strip() != ""]
     non_alerting_test_list = fix_syntax_error(non_alerting_test_list)
 
-    return create_test_info(alerting_test_list, non_alerting_test_list)
+    return alerting_test_list, non_alerting_test_list
 
 
 def gen_checker_tests(
-    checker_dsl: str, gen_type: str = "all", add_info: bool = False, retry_max_attempts: int = 1
-) -> Optional[TestInfoDict]:
+    checker_dsl: str,
+    gen_type: str = "all",
+    add_info: bool = False,
+    retry_max_attempts: int = 1,
+) -> tuple[list[str], list[str]]:
     """
     Generate test cases for the given Checker DSL.
     Args:
         checker_dsl: The Checker DSL to generate tests for.
         gen_type: The type of tests to generate, can be "all", "alerting", or "non-alerting".
         add_info: Whether to add additional information (node_properties) to the prompt.
+        do_test_aug: Whether to augment tests while keeping existing tests.
         retry_max_attempts: The maximum number of attempts to retry if parsed nothing.
     Returns:
-        A TestInfoDict containing the generated test cases, or None if no valid test cases are generated.
+        alerting_test_list: A list of alerting test cases.
+        non_alerting_test_list: A list of non-alerting test cases.
     """
     assert gen_type in [
         "all",
@@ -159,19 +164,20 @@ def gen_checker_tests(
         llm_response = LLMWrapper.query_llm(user_prompt, system_prompt=sys_prompt, query_type=query_type)
         logger.debug(f"LLM TestGenerator result: \n{llm_response}")
         # parse the response
-        test_info = extract_checker_tests(llm_response, gen_type)
-        if gen_type in ["alerting", "all"] and len(test_info["alerting"]) == 0:
+        alerting_test_list, non_alerting_test_list = extract_checker_tests(llm_response, gen_type)
+        test_info = create_test_info(alerting_test_list, non_alerting_test_list)
+        if gen_type in ["alerting", "all"] and len(alerting_test_list) == 0:
             logger.error(
                 f"--> [Detected LLM GenTest Failure] No Alerting test cases generated! Please check the LLM output."
             )
-        elif gen_type in ["non-alerting", "all"] and len(test_info["non_alerting"]) == 0:
+        elif gen_type in ["non-alerting", "all"] and len(non_alerting_test_list) == 0:
             logger.error(
                 f"--> [Detected LLM GenTest Failure] No Non-Alerting test cases generated! Please check the LLM output."
             )
         else:
-            return test_info
+            return alerting_test_list, non_alerting_test_list
 
     logger.error(
         f"--> [Detected LLM GenTest Failure] failed after {retry_max_attempts} attempts! Please check the LLM output."
     )
-    return None
+    return [], []

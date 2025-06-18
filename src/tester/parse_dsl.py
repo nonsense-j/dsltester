@@ -93,6 +93,7 @@ def preprocess_dsl(
         logger.info("Single node detected.")
 
     sub_dsl_result = []
+    transformed_dsl_list = []
     for i, node_dsl in enumerate(node_dsl_list):
         i += 1
         logger.info(f"[#{i}] Node DSL parsing starts...")
@@ -108,6 +109,7 @@ def preprocess_dsl(
             split_not_has=split_not_has,
         )
         transformed_dsl = not_visitor.visit(node_tree)
+        transformed_dsl_list.append(transformed_dsl)
         logger.info(f"[#{i}] Node DSL transformation done~")
 
         # DSL decomposition -- starting from node Stmt -- KirinOrVisitor
@@ -131,24 +133,27 @@ def preprocess_dsl(
                 sub_dsl_result[i][j] = KirinRunner.format_dsl_text(sub_dsl)
 
     return DslPrepResDict(
-        node_dsl_list=node_dsl_list,
+        node_dsl_list=node_dsl_list if not init_transform else transformed_dsl_list,
         sub_dsl_collection=sub_dsl_result,
     )
 
 
-def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path) -> None:
+def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path, is_opposite: bool = False) -> None:
     """
     Save the dsl preprocess result to the dsl directory
     :param dsl_prep_res: dsl preprocess result
     :param dsl_dir: dsl directory, which is the kirin_ws/{dsl_id}/dsl directory
+    :param is_opposite: whether the dsl is in the opposite setting
     :return: None, the dsl preprocess result will be saved to dsl_dir
     """
-    assert dsl_dir.is_dir(), f"--> DSL directory {dsl_dir} not found!"
+    assert dsl_dir.parent.is_dir(), f"--> DSL directory {dsl_dir.parent} not found!"
     create_dir_with_path(dsl_dir, cleanup=True)
+
+    prefix = "DSL_OPP" if is_opposite else "DSL"
 
     for i, node_dsl in enumerate(dsl_prep_res["node_dsl_list"]):
         i += 1
-        node_dsl_path = dsl_dir / f"DSL_N{i}.kirin"
+        node_dsl_path = dsl_dir / f"{prefix}_N{i}.kirin"
         node_dsl_path.write_text(node_dsl, encoding="utf-8")
 
     for i, sub_dsl_list in enumerate(dsl_prep_res["sub_dsl_collection"]):
@@ -157,7 +162,7 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path) -> None:
         sub_dsl_dir.mkdir(parents=True, exist_ok=True)
         for j, sub_dsl in enumerate(sub_dsl_list):
             j += 1
-            sub_dsl_path = sub_dsl_dir / f"DSL_N{i}_S{j}.kirin"
+            sub_dsl_path = sub_dsl_dir / f"{prefix}_N{i}_S{j}.kirin"
             sub_dsl_path.write_text(sub_dsl, encoding="utf-8")
 
     logger.info(f"DSL preprocess result saved to {dsl_dir}")
@@ -167,7 +172,7 @@ if __name__ == "__main__":
     # Test the parse_dsl function
     dsl_path = Path("data/tmp/test_func.kirin")
     dsl_text = dsl_path.read_text(encoding="utf-8")
-    dsl_prep_res = preprocess_dsl(dsl_text, init_transform=True, split_not_has=True, do_format=True)
+    dsl_prep_res = preprocess_dsl(dsl_text, init_transform=False, split_not_has=False, do_format=True)
 
     result_str = "==> Preprocess Result:\n"
 

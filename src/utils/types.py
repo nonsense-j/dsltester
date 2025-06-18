@@ -11,10 +11,10 @@ class DslInfoDict(TypedDict):
 
 
 class TestInfoDict(TypedDict):
-    # file_stem: code
+    # file_stem: code; mismatch contain tests with unexpected validation results (inferred by LLM & semantic-preserving mutation)
     alerting: List[tuple[str, str]]
     non_alerting: List[tuple[str, str]]
-    unknown: List[tuple[str, str]]
+    mismatch: List[tuple[str, str]]
 
 
 class DslPrepResDict(TypedDict):

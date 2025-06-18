@@ -37,3 +37,13 @@ def set_log_file(log_file_path) -> None:
     file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+
+
+def unset_log_file() -> None:
+    """
+    Unset the log file for the logger.
+    """
+    for handler in logger.handlers[:]:
+        if isinstance(handler, logging.FileHandler):
+            logger.removeHandler(handler)
+            handler.close()

@@ -42,6 +42,26 @@ class TestEditor:
                 if test_file.exists():
                     default_e = "Exception" if exception_name.endswith("Exception") else "Error"
                     cls.fix_unsupported_exception(test_file, line_number, default_exception=default_e, do_replace=True)
+                    cls.fix_never_throw_exception(
+                        test_file, line_number, wrong_exception, correct_exception=default_e, do_replace=True
+                    )
+                else:
+                    logger.error(f"Test file {file_name} does not exist.")
+
+            never_throw_exception_match = re.search(
+                r"\w+\.java:(\d+): error: (exception|error) (\w+) is never thrown in body of corresponding try statement",
+                error_msg,
+            )
+            if never_throw_exception_match:
+                line_number = int(never_throw_exception_match.group(1))
+                wrong_exception = never_throw_exception_match.group(3)
+                test_file = Path(file_name)
+                do_fix_flag = True
+                if test_file.exists():
+                    correct_exception = "Exception" if wrong_exception.endswith("Exception") else "Error"
+                    cls.fix_never_throw_exception(
+                        test_file, line_number, wrong_exception, correct_exception, do_replace=True
+                    )
                 else:
                     logger.error(f"Test file {file_name} does not exist.")
         if do_fix_flag:
@@ -49,6 +69,26 @@ class TestEditor:
         else:
             logger.info("No general errors found in test files, skipping...")
         return do_fix_flag
+
+    @classmethod
+    def fix_never_throw_exception(
+        cls, test_file: Path, error_line: int, wrong_exception: str, correct_exception: str, do_replace=False
+    ) -> str:
+        with open(test_file, "r", encoding="utf-8") as f:
+            code = f.readlines()
+        # replace the error line with the correct exception
+        error_line_index = error_line - 1
+        if error_line_index < 0 or error_line_index >= len(code):
+            raise ValueError(f"Error line {error_line} is out of range for file {test_file}")
+        new_error_line = code[error_line_index].replace(wrong_exception, correct_exception)
+        code[error_line_index] = new_error_line
+
+        if do_replace:
+            with open(test_file, "w", encoding="utf-8") as f:
+                f.writelines(code)
+            logger.info(
+                f"Fixed never throw exception in {test_file} at line {error_line} from {wrong_exception} to {correct_exception}."
+            )
 
     @classmethod
     def fix_unsupported_exception(
