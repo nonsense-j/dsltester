@@ -38,9 +38,9 @@ def initialize_dsl_ws(dsl_info: DslInfoDict, do_clean_up: bool = False):
         else:
             logger.info(f"Found dsl workspace at {dsl_ws_dir}, skip clean up...")
 
-    # create the dsl directory and save dsl and sub-dsl files
+    # create the dsl directory, must clean
     dsl_ws_dsl_dir = dsl_ws_dir / "dsl"
-    dsl_ws_dsl_dir.mkdir(parents=True, exist_ok=True)
+    create_dir_with_path(dsl_ws_dsl_dir, cleanup=True)
 
     # create the test directory for generated tests
     dsl_ws_test_dir = dsl_ws_dir / "test"
@@ -59,9 +59,9 @@ def prep_dsl_dir(dsl_info: DslInfoDict):
     ori_dsl_path.write_text(dsl_info["dsl"], encoding="utf-8")
     # preprocess the dsl (both normal and opposite setting) and save the result
     dsl_prep_res = preprocess_dsl(dsl_info["dsl"])
-    save_dsl_prep_res(dsl_prep_res, dsl_ws_dsl_dir / "norm")
-    dsl_opp_prep_res = preprocess_dsl(dsl_info["dsl"], init_transform=True)
-    save_dsl_prep_res(dsl_opp_prep_res, dsl_ws_dsl_dir / "opp", is_opposite=True)
+    save_dsl_prep_res(dsl_prep_res, dsl_ws_dsl_dir)
+    dsl_opp_prep_res = preprocess_dsl(dsl_info["dsl"], init_transform=True, spec_na_strategy=True)
+    save_dsl_prep_res(dsl_opp_prep_res, dsl_ws_dsl_dir, is_opposite=True)
 
 
 def gen_flow_once(
@@ -130,14 +130,14 @@ def gen_flow_regression(dsl_info: DslInfoDict):
     dsl_ws_test_dir = dsl_ws / "test"
 
     # initial test generation flow
-    gen_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="all", use_exist_tests=False)
+    gen_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="all", use_exist_tests=True)
 
     # check if non-alerting tests are generated
     # if not gen_res["DSL_ORI"]["pass"]:
     #     gen_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="non-alerting", do_test_aug=True)
 
     # scenario-coverage test augmentation
-    failed_dsl_paths = collect_failed_dsl_paths(dsl_ws_test_dir, gen_res)
+    failed_dsl_paths = collect_failed_dsl_paths(dsl_id, gen_res)
     for failed_dsl_path in failed_dsl_paths:
         failed_dsl = failed_dsl_path.read_text(encoding="utf-8")
         logger.info(f"Augmenting tests for failed DSL: {failed_dsl_path}")
