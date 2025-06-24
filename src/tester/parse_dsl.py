@@ -170,9 +170,9 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path, is_opposite: 
 
 if __name__ == "__main__":
     # Test the parse_dsl function
-    dsl_path = Path("data/tmp/test_func.kirin")
+    dsl_path = Path("data/tmp/dsl_6.kirin")
     dsl_text = dsl_path.read_text(encoding="utf-8")
-    dsl_prep_res = preprocess_dsl(dsl_text, init_transform=False, split_not_has=False, do_format=True)
+    dsl_prep_res = preprocess_dsl(dsl_text, init_transform=True, spec_na_strategy=True, do_format=True)
 
     result_str = "==> Preprocess Result:\n"
 

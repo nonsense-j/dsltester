@@ -379,7 +379,7 @@ class KirinNotVisitor(KirinBaseVisitor):
                 # don't propaganda do_transform to inner condition, only transform the hasOperator
                 tmp_dt = self.do_transform
                 self.do_transform = False
-                if self.split_not_has:
+                if self.split_not_has and has_text.startswith("not"):
                     # First condition: notContain
                     root_node_attr = contained_desc.getTypedRuleContext(DslParser.RootNodeAttrContext, 0)
                     only_contain_text = self.full_text[spec_dirct_cond.start.start : has_ctx.start.start] + has_text
@@ -409,7 +409,7 @@ class KirinNotVisitor(KirinBaseVisitor):
             if contained_cond_expr is not None:
                 text_before = self.full_text[spec_dirct_cond.start.start : contained_cond_expr.start.start]
                 text_after = self.full_text[contained_cond_expr.stop.stop + 1 : spec_dirct_cond.stop.stop + 1]
-                if self.do_transform:
+                if is_text == "isnot" and self.split_not_has:
                     # the [satisfy_op: is] condition should be added as the first new condition
                     # First condition: satisfy_op
                     satisy_sym = spec_dirct_cond.Satisfy().symbol
@@ -428,8 +428,15 @@ class KirinNotVisitor(KirinBaseVisitor):
                 return text_res
 
         elif isinstance(spec_dirct_cond, (DslParser.NodeConditionContext, DslParser.NodeCollectionConditionContext)):
-            # TODO)) Handle NodeCondition and NodeCollectionCondition, currrently fall back to the default treatment
-            pass
+            # TODO)) Handle NodeCondition and NodeCollectionCondition, enter and split
+            contained_cond_expr = spec_dirct_cond.getTypedRuleContext(DslParser.CondExprContext, 0)
+            if contained_cond_expr is not None:
+                text_before = self.full_text[spec_dirct_cond.start.start : contained_cond_expr.start.start]
+                text_after = self.full_text[contained_cond_expr.stop.stop + 1 : spec_dirct_cond.stop.stop + 1]
+                return text_before + self.visitCondExpr(contained_cond_expr) + text_after
+            else:
+                # no condExpr, just return the original dsl
+                return self.getOriText(spec_dirct_cond)
 
         # desult transformation
         cond_text = self.getOriText(ctx)
