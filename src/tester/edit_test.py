@@ -42,9 +42,6 @@ class TestEditor:
                 if test_file.exists():
                     default_e = "Exception" if exception_name.endswith("Exception") else "Error"
                     cls.fix_unsupported_exception(test_file, line_number, default_exception=default_e, do_replace=True)
-                    cls.fix_never_throw_exception(
-                        test_file, line_number, wrong_exception, correct_exception=default_e, do_replace=True
-                    )
                 else:
                     logger.error(f"Test file {file_name} does not exist.")
 

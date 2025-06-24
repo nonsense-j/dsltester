@@ -86,7 +86,12 @@ def gen_flow_once(
     if test_case_count > 0 and use_exist_tests:
         logger.info(f"Found {test_case_count} test cases in {dsl_ws_test_dir}, skip...")
     else:
-        alerting_test_list, non_alerting_tests = gen_checker_tests(checker_dsl, gen_type, add_info=False)
+        # if gen_type == "all":
+        #     alerting_test_list, _ = gen_checker_tests(checker_dsl, gen_type="alerting")
+        #     _, non_alerting_tests = gen_checker_tests(checker_dsl, gen_type="non-alerting")
+        # else:
+        #     alerting_test_list, non_alerting_tests = gen_checker_tests(checker_dsl, gen_type)
+        alerting_test_list, non_alerting_tests = gen_checker_tests(checker_dsl, gen_type)
         if do_test_aug:
             start_ids, mismatch_start_ids = collect_local_start_ids(dsl_ws_test_dir)
             test_info = create_test_info(alerting_test_list, non_alerting_tests, start_ids, mismatch_start_ids)
@@ -125,7 +130,7 @@ def gen_flow_regression(dsl_info: DslInfoDict):
     dsl_ws_test_dir = dsl_ws / "test"
 
     # initial test generation flow
-    gen_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="alerting", use_exist_tests=True)
+    gen_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="all", use_exist_tests=False)
 
     # check if non-alerting tests are generated
     # if not gen_res["DSL_ORI"]["pass"]:

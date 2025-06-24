@@ -76,10 +76,18 @@ def parse_xml_results(dsl_id) -> dict[str, DslValResDict]:
         pass_files = [f for f in scan_files if f not in reported_files]
         result[checker_name]["pass"] = sorted(pass_files)
 
+    # handle unreported DSL_ORI checker
+    if "DSL_ORI" not in result:
+        if dsl_id in result:
+            result["DSL_ORI"] = result[dsl_id]
+            del result[dsl_id]
+        if "SecH_default_rule_name" in result:
+            result["DSL_ORI"] = result["SecH_default_rule_name"]
+            del result["SecH_default_rule_name"]
+
     # checkers not reported in the XML file
     checker_dir = Path(f"kirin_ws/{dsl_id}/dsl")
     # collect all .kirin file in checker_dir and its sub_dir recursively into the checker_list
-
     for checker_file in checker_dir.glob("**/*.kirin"):
         checker_name = checker_file.stem
         if checker_name not in result:

@@ -384,12 +384,13 @@ def rearrage_test_info(test_dir: Path, gen_res: dict, allow_failed_build: bool =
             continue
 
     for non_alerting_file in sorted(gen_res["DSL_ORI"]["pass"]):
-        non_alerting_test_code = read_file(test_dir / "no-alert" / non_alerting_file)
         if non_alerting_file.startswith("Alerting"):
-            # non-alerting test but reported
+            # mismatch: non-alerting test but reported
+            non_alerting_test_code = read_file(test_dir / "alert" / non_alerting_file)
             mismatched_tests.append(non_alerting_test_code)
             test_change_map[non_alerting_file] = f"MismatchNonAlerting{len(mismatched_tests)}"
         elif non_alerting_file.startswith("NonAlerting"):
+            non_alerting_test_code = read_file(test_dir / "no-alert" / non_alerting_file)
             true_non_alerting_tests.append(non_alerting_test_code)
             new_non_alerting_file = f"NonAlertingTest{len(true_non_alerting_tests)}"
             if non_alerting_file != new_non_alerting_file:

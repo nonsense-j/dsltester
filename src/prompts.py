@@ -27,8 +27,9 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
-test case itself or correctly imported. Do not import unused classes.
+Never use implicit dependencies (e.g., "import *") and each symbol used in the code must be either defined within it or correctly imported. \
+For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. \
+Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls.
 5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
 which uses exact class naming "AlertingTest{{i}}" and "NonAlertingTest{{j}}" where {{i}} refers to the index of alerting tests and {{j}} for the non-alerting tests, \
 both starting from 1.
@@ -62,8 +63,9 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
-test case itself or correctly imported. Do not import unused classes.
+Never use implicit dependencies (e.g., "import *") and each symbol used in the code must be either defined within it or correctly imported. \
+For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. \
+Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls.
 5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
 which uses exact class naming "AlertingTest{{i}}" where {{i}} is the test index, starting from 1.
 6. Output Specification. Directly output each test case enclosed in separate "<alerting_java_file>" and "</alerting_java_file>" blocks excluding detailed explanations.
@@ -94,8 +96,9 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Ensure to avoid implicit dependencies or external resource assumptions. Every symbol used in the code must be either defined within the \
-test case itself or correctly imported. Do not import unused classes.
+Never use implicit dependencies (e.g., "import *") and each symbol used in the code must be either defined within it or correctly imported. \
+For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. \
+Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls.
 5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
 which uses exact class naming "NonAlertingTest{{i}}" where {{i}} is the test index, starting from 1.
 6. Output Specification. Directly output each test case enclosed in separate "<non_alerting_java_file>" and "</non_alerting_java_file>" blocks excluding detailed explanations.
