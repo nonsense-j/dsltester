@@ -162,11 +162,11 @@ class TestCompiler:
         if not error_map:
             logger.info(f"Successfully compiled all {len(self.test_filepaths_str)} test cases for {self.dsl_id}.")
         else:
-            sorted_keys = sorted(error_map.keys())
-            sorted_errors = [error_map[key] for key in sorted_keys]
+            self.failed_tests = sorted(error_map.keys())
+            sorted_errors = [error_map[key] for key in self.failed_tests]
             error_msg = "\n".join(sorted_errors)
             logger.warning(
-                f"--> Failed to compile {len(sorted_errors)} out of {len(self.test_filepaths_str)} files:\n{error_msg}"
+                f"--> Failed to compile {len(self.failed_tests)} out of {len(self.test_filepaths_str)} files:\n{error_msg}"
             )
 
         # clean target directory if needed
@@ -267,7 +267,7 @@ class TestCompiler:
 
             query_type = "fix_test_compile_with_lib"
             user_prompt = PROMPTS[query_type].format(
-                dsl_input=self.checker_dsl,
+                checker_dsl=self.checker_dsl,
                 wrapped_java_code=wrapped_java_code,
                 wrapped_lib_code=wrapped_lib_code,
                 error_msg=full_error_msg,
@@ -275,7 +275,7 @@ class TestCompiler:
         else:
             query_type = "fix_test_compile_wo_lib"
             user_prompt = PROMPTS[query_type].format(
-                dsl_input=self.checker_dsl,
+                checker_dsl=self.checker_dsl,
                 wrapped_java_code=wrapped_java_code,
                 error_msg=full_error_msg,
             )
@@ -350,7 +350,7 @@ class TestCompiler:
         all_test_filepaths = list(test_dir.rglob("*.java"))
         if len(all_test_filepaths) == 0:
             logger.error(f"--> No test cases are found in {test_dir}!")
-            return False
+            return True
 
         # parse tests' dependency using tree-sitter
         gen_by_ts = False
@@ -387,8 +387,9 @@ class TestCompiler:
 
             # if still not compiled successfully, return False for test build
             if not mock_jar_status:
-                logger.error(f"--> Exit test build for {self.dsl_id} since generating mock jar failed!")
-                return False
+                logger.error(f"--> Failed to gen mock jar for {self.dsl_id}, try directly compiling...")
+                test_compile_status, error_map = self.compile_test_code()
+                return test_compile_status
         else:
             shutil.rmtree(self.mock_tmp_dir, ignore_errors=True)
             shutil.rmtree(self.lib_dir, ignore_errors=True)
@@ -398,7 +399,6 @@ class TestCompiler:
         while not test_compile_status:
             # Test compilation
             test_compile_status, error_map = self.compile_test_code()
-            self.failed_tests = sorted(error_map.keys())
             if test_compile_status:
                 return True
             # Fix general errors

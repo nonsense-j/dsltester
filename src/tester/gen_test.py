@@ -4,7 +4,6 @@ from typing import Optional
 
 from .parse_dsl import preprocess_dsl
 from src.prompts import PROMPTS, SYS_PROMPTS
-from src.utils.types import TestInfoDict
 from src.utils._logger import logger
 from src.utils._llm import LLMWrapper
 from src.utils._helper import validate_syntax, create_test_info
@@ -103,12 +102,14 @@ def extract_checker_tests(llm_output: str, gen_type: str) -> tuple[list[str], li
     alert_pattern = r"<alerting_java_file>\s*(.*?)\s*</alerting_java_file>"
     alerting_test_list = re.findall(alert_pattern, llm_output, re.DOTALL)
     alerting_test_list = [test_case for test_case in alerting_test_list if test_case.strip() != ""]
-    alerting_test_list = fix_syntax_error(alerting_test_list)
+    if alerting_test_list:
+        alerting_test_list = fix_syntax_error(alerting_test_list)
 
     non_alert_pattern = r"<non_alerting_java_file>\s*(.*?)\s*</non_alerting_java_file>"
     non_alerting_test_list = re.findall(non_alert_pattern, llm_output, re.DOTALL)
     non_alerting_test_list = [test_case for test_case in non_alerting_test_list if test_case.strip() != ""]
-    non_alerting_test_list = fix_syntax_error(non_alerting_test_list)
+    if non_alerting_test_list:
+        non_alerting_test_list = fix_syntax_error(non_alerting_test_list)
 
     return alerting_test_list, non_alerting_test_list
 
@@ -153,7 +154,7 @@ def gen_checker_tests(
     query_type = prompt_map[gen_type]
     user_prompt = PROMPTS[query_type].format(
         additional_info=additional_info,
-        dsl_input=checker_dsl,
+        checker_dsl=checker_dsl,
     )
 
     for attempt in range(retry_max_attempts + 1):
@@ -165,7 +166,6 @@ def gen_checker_tests(
         logger.debug(f"LLM TestGenerator result: \n{llm_response}")
         # parse the response
         alerting_test_list, non_alerting_test_list = extract_checker_tests(llm_response, gen_type)
-        test_info = create_test_info(alerting_test_list, non_alerting_test_list)
         if gen_type in ["alerting", "all"] and len(alerting_test_list) == 0:
             logger.error(
                 f"--> [Detected LLM GenTest Failure] No Alerting test cases generated! Please check the LLM output."
@@ -181,3 +181,45 @@ def gen_checker_tests(
         f"--> [Detected LLM GenTest Failure] failed after {retry_max_attempts} attempts! Please check the LLM output."
     )
     return [], []
+
+
+def refine_checker_tests(
+    mismatch_test_list: list[str], checker_dsl: str, refine_type: str, retry_max_attempts: int = 1
+) -> tuple[list[str], list[str]]:
+    """
+    Refine the generated test cases by checking the syntax and removing invalid ones.
+    """
+    assert refine_type in [
+        "alerting",
+        "non-alerting",
+    ], f"Invalid refine type: {refine_type}, should be one of ['alerting', 'non-alerting']"
+    logger.info(f"==> Refining {len(mismatch_test_list)} test cases to be {refine_type} test cases")
+    prompt_map = {
+        "alerting": "refine_alerting_tests",
+        "non-alerting": "refine_non_alerting_tests",
+    }
+    # construct the user prompt
+    test_wrapper = "alerting_test" if refine_type == "alerting" else "non_alerting_test"
+    user_prompt = PROMPTS[prompt_map[refine_type]].format(
+        checker_dsl=checker_dsl,
+        wrapped_java_code="\n\n".join(
+            [f"```<{test_wrapper}>\n{test_code}\n</{test_wrapper}>" for test_code in mismatch_test_list]
+        ),
+    )
+
+    for attempt in range(retry_max_attempts + 1):
+        if attempt > 0:
+            # 0 is the first attempt, others are retries
+            logger.warning(
+                f"--> [Detected LLM RefineTest Failure] Retrying (attempt {attempt}/{retry_max_attempts})..."
+            )
+        # query the LLM
+        llm_response = LLMWrapper.query_llm(user_prompt, query_type=prompt_map[refine_type])
+        logger.debug(f"LLM RefineTests result: \n{llm_response}")
+
+        # parse the response with test_wrapper
+        pattern = rf"<{test_wrapper}>\s*(.*?)\s*</{test_wrapper}>"
+        refined_test_list = re.findall(pattern, llm_response, re.DOTALL)
+        refined_test_list = [test_case for test_case in refined_test_list if test_case.strip() != ""]
+
+    return refined_test_list

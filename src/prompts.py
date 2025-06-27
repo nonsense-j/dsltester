@@ -27,9 +27,9 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use implicit dependencies (e.g., "import *") and each symbol used in the code must be either defined within it or correctly imported. \
-For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. \
-Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls.
+Each symbol used in the code must be either defined within it or correctly imported and never use implicit dependencies (e.g., "import *"). \
+Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls. \
+For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. 
 5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
 which uses exact class naming "AlertingTest{{i}}" and "NonAlertingTest{{j}}" where {{i}} refers to the index of alerting tests and {{j}} for the non-alerting tests, \
 both starting from 1.
@@ -39,7 +39,7 @@ and non-alerting tests wrapped in "<non_alerting_java_file>" and "</non_alerting
 ### Your Task
 ### Checker DSL
 ```dsl
-{dsl_input}
+{checker_dsl}
 ```
 ### Output Tests
 """
@@ -63,9 +63,9 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use implicit dependencies (e.g., "import *") and each symbol used in the code must be either defined within it or correctly imported. \
-For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. \
-Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls.
+Each symbol used in the code must be either defined within it or correctly imported and never use implicit dependencies (e.g., "import *"). \
+Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls. \
+For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. 
 5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
 which uses exact class naming "AlertingTest{{i}}" where {{i}} is the test index, starting from 1.
 6. Output Specification. Directly output each test case enclosed in separate "<alerting_java_file>" and "</alerting_java_file>" blocks excluding detailed explanations.
@@ -73,7 +73,7 @@ which uses exact class naming "AlertingTest{{i}}" where {{i}} is the test index,
 ### Your Task
 ### Checker DSL
 ```dsl
-{dsl_input}
+{checker_dsl}
 ```
 ### Output Alerting Tests
 """
@@ -96,9 +96,9 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. Compilation Readiness. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use implicit dependencies (e.g., "import *") and each symbol used in the code must be either defined within it or correctly imported. \
-For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. \
-Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls.
+Each symbol used in the code must be either defined within it or correctly imported and never use implicit dependencies (e.g., "import *"). \
+Always use "com.exp.AnotherClass" if you need a different or random class, which accepts any method or field calls. \
+For specific imported classes, ensure to only use methods or fields that must be defined in the classes and never guess names. 
 5. Standardized Test Code. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
 which uses exact class naming "NonAlertingTest{{i}}" where {{i}} is the test index, starting from 1.
 6. Output Specification. Directly output each test case enclosed in separate "<non_alerting_java_file>" and "</non_alerting_java_file>" blocks excluding detailed explanations.
@@ -106,11 +106,69 @@ which uses exact class naming "NonAlertingTest{{i}}" where {{i}} is the test ind
 ### Your Task
 ### Checker DSL
 ```dsl
-{dsl_input}
+{checker_dsl}
 ```
 ### Output Non-Alerting Tests
 """
 
+PROMPTS[
+    "refine_alerting_tests"
+] = """\
+## General Goal
+Given a code checker (in DSL format) and test cases (in Java code) that **fail to trigger alerts**, modify each test case minimally to ensure \
+the checker reports it. Preserve the test's core scenario and main class name while closing the gap between the checker's logic and test code.
+
+### Critical Rules
+1. **Trigger Checker Reporting**  
+   - Analyze why the original test wasn't reported by comparing the DSL's violation patterns with test code
+   - Make surgical changes ONLY where needed to match checker's detection logic
+
+2. **Preserve Original Structure**  
+   - Keep main class name identical (e.g., `AlertingTest1` remains unchanged)
+   - Retain existing imports and core logic flow
+   - The modified test must still be a complete Java file that can compile successfully
+
+### Checker DSL
+<checker_dsl>
+{checker_dsl}
+</checker_dsl>
+
+### Test Cases should be reported by the checker but not
+{wrapped_alerting_tests}
+
+First, briefly analyze the provided test cases and the checker DSL to identify why the tests are not reported. Then, output modified \
+test cases in the same order without detailed explanations, each wrapped in "<alerting_test>" and "</alerting_test>".
+"""
+
+PROMPTS[
+    "refine_non_alerting_tests"
+] = """\
+## General Goal
+Given a code checker (in DSL format) and test cases (Java code) that **are incorrectly triggering alerts**, modify each test case minimally to ensure the checker no longer reports them. \
+Preserve the test's core scenario and main class name while closing the gap between the checker's logic and test code.
+
+### Critical Rules
+1. **Suppress Checker Reporting**  
+   - Analyze why the original test was reported by comparing the DSL's violation patterns with test code
+   - Make surgical changes ONLY where needed to avoid matching checker's detection logic
+   - Ensure modifications preserve the test's original valid behavior
+
+2. **Preserve Core Identity**  
+   - Maintain identical main class names (e.g., `NonAlertingTest1` unchanged)
+   - Retain existing imports and primary logic flow
+   - All modifications must yield compilable Java files
+
+### Checker DSL
+<checker_dsl>
+{checker_dsl}
+</checker_dsl>
+
+### Test Cases Incorrectly Reported by Checker
+{wrapped_non_alerting_tests}
+
+First, briefly analyze the provided test cases and the checker DSL to identify why the tests are incorrectly reported. Then, output \
+modified test cases in the same order without detailed explanations, each wrapped in "<non_alerting_test>" and "</non_alerting_test>".
+"""
 
 PROMPTS[
     "gen_mock_lib_code"
@@ -179,7 +237,7 @@ Fixed code must still follow the intent described by the comments. While keep or
 3. Maintain Checker-Reportable Patterns. Ensure that the fixed Java code files still contain checker-matching code patterns to guarantee reportability. \
 The static code checker is written in dsl format as follows:
 <checker_dsl>
-{dsl_input}
+{checker_dsl}
 </checker_dsl>
 
 
@@ -215,7 +273,7 @@ While keep original code comments, do not add comments to explain the changes.
 3. Maintain Checker-Reportable Patterns. Ensure that the fixed Java code files still contain checker-matching code patterns to guarantee reportability. \
 The static code checker is written in dsl format as follows:
 <checker_dsl>
-{dsl_input}
+{checker_dsl}
 </checker_dsl>
 
 ### Input and Output Format
