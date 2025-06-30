@@ -5,6 +5,7 @@ from src.utils._llm import LLMWrapper
 from src.utils.types import DslInfoDict, TestInfoDict
 from src.tester.build_test import TestCompiler
 from src.tester.gen_test import gen_checker_tests, refine_checker_tests
+from src.tester.manage_test import TestManager
 from src.tester.validate_test import validate_tests
 from src.utils._logger import logger, set_log_file, unset_log_file
 from src.tester.parse_dsl import preprocess_dsl, save_dsl_prep_res
@@ -17,6 +18,10 @@ from src.utils._helper import (
     collect_failed_dsl_paths,
     collect_local_test_info,
 )
+
+
+COMPILATION_FAIL_THRESHOLD = 0.6  # Threshold for test compilation failure ratio
+MISMATCH_THRESHOLD = 0.5  # Threshold for test mismatch ratio
 
 
 def initialize_dsl_ws(dsl_info: DslInfoDict, do_clean_up: bool = False):
@@ -65,16 +70,13 @@ def prep_dsl_dir(dsl_info: DslInfoDict):
     save_dsl_prep_res(dsl_opp_prep_res, dsl_ws_dsl_dir, is_opposite=True)
 
 
-def gen_flow_once(
-    dsl_id: str, checker_dsl: str, gen_type: str = "all", do_test_aug: bool = False, use_exist_tests: bool = False
-) -> tuple[int, dict]:
+def gen_compilable_tests(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exist_tests: bool = False) -> bool:
     """
-    Generate tests and validate for a single DSL as a complete flow.
+    Generate tests and filter non-compiled ones for a single DSL in the test-tmp dir.
     :param dsl_info: The DSL information dictionary containing 'id' and 'dsl'.
     :param gen_type: The type of tests to generate, can be "all", "alerting", or "non-alerting".
-    :param do_test_aug: Whether to augment tests while keeping existing tests.
-    :param use_exist_tests: Whether to use existing tests if available.
-    :return: A tuple containing the generation status and a dictionary of results.
+    :param use_exist_tests: Whether to use existing tests if available in tmp test dir.
+    :return: False if too many non-compilable tests are found, True otherwise.
     """
     assert gen_type in [
         "all",
@@ -83,39 +85,51 @@ def gen_flow_once(
     ], f"Invalid gen_type: {gen_type}, should be one of ['all', 'alerting', 'non-alerting']"
 
     dsl_ws = Path("kirin_ws") / dsl_id
-    dsl_ws_test_dir = dsl_ws / "test"
-    start_ids, mismatch_start_ids = collect_local_start_ids(dsl_ws_test_dir)
-    alert_test_count = (start_ids[0] - 1) + (mismatch_start_ids[0] - 1)
-    non_alert_test_count = (start_ids[1] - 1) + (mismatch_start_ids[1] - 1)
-    test_case_count = sum(start_ids) + sum(mismatch_start_ids) - 4
-    if test_case_count > 0 and use_exist_tests:
-        logger.info(f"Found {test_case_count} existed test cases in {dsl_ws_test_dir}, skip...")
-    else:
+
+    # create a tmp test dir for this gen_flow
+    dsl_ws_test_tmpdir = dsl_ws / "test-tmp"
+    dsl_ws_test_tmpdir.mkdir(parents=True, exist_ok=True)
+    tmp_test_manager = TestManager(dsl_ws_test_tmpdir)
+
+    test_count = 0  # Record the generated or existed tests
+    skip_gen_flag = False  # Flag to indicate if generation should be skipped
+    if use_exist_tests:
+        tmp_start_id_map = collect_local_start_ids(dsl_ws_test_tmpdir)
+        test_count = sum(tmp_start_id_map.values()) - len(tmp_start_id_map)
+        if test_count > 0:
+            skip_gen_flag = True
+            logger.info(f"Found {test_count} existed test cases in {dsl_ws_test_tmpdir}, skip...")
+        else:
+            logger.info(f"No existed test cases found in {dsl_ws_test_tmpdir}, will generate new tests...")
+
+    # Invoke LLM to generate tests
+    if not skip_gen_flag:
         if gen_type == "all":
             alerting_test_list, _ = gen_checker_tests(checker_dsl, gen_type="alerting")
             _, non_alerting_tests = gen_checker_tests(checker_dsl, gen_type="non-alerting")
         else:
             alerting_test_list, non_alerting_tests = gen_checker_tests(checker_dsl, gen_type)
         # alerting_test_list, non_alerting_tests = gen_checker_tests(checker_dsl, gen_type)
-        if do_test_aug:
-            cur_test_info = create_test_info(alerting_test_list, non_alerting_tests, start_ids, mismatch_start_ids)
-        else:
-            cur_test_info = create_test_info(alerting_test_list, non_alerting_tests)
-        assert cur_test_info, f"Failed to generate test cases for DSL {dsl_id}"
-        save_test_info(test_info, dsl_ws_test_dir, do_test_aug=do_test_aug)
+
+        test_info = tmp_test_manager.create_test_info(alerting_test_list, non_alerting_tests)
+        if not test_info.get("alerting", []) and not test_info.get("non_alerting", []):
+            raise ValueError(f"No test cases generated for DSL {dsl_id} with gen_type {gen_type}. ")
+
+        # update the test case count and save the tests
+        test_count = len(test_info["alerting"]) + len(test_info["non_alerting"])
+        tmp_test_manager.save_test_info(test_info)
 
     # try to compile the test cases (mock lib + compile lib + compile test)
-    test_compiler = TestCompiler(dsl_id, checker_dsl=checker_dsl)
+    test_compiler = TestCompiler(dsl_id, test_dir=dsl_ws_test_tmpdir, checker_dsl=checker_dsl)
     test_compile_status = test_compiler.build_tests(fix_max_attempts=2)
-    gen_res = {"BUILD_FAIL_TESTS": test_compiler.failed_tests}
-    # [Verify] Non-compilable tests -> retry
+    # [Verify] Non-compilable tests -> return False (need retry)
     if not test_compile_status:
-        compile_fail_ratio = len(test_compiler.failed_tests) / test_case_count if test_case_count > 0 else 1
-        if compile_fail_ratio > 0.6:
+        compile_fail_ratio = len(test_compiler.failed_tests) / test_count if test_count > 0 else 1
+        if compile_fail_ratio > COMPILATION_FAIL_THRESHOLD:
             logger.warning(
                 f"Compile fail ratio {compile_fail_ratio:.2f} is too high, consider regenerating test cases."
             )
-            return False, gen_res
+            return False
         else:
             failed_tests_dir = dsl_ws / "test-fail"
             # create a subdirectory kirin_ws/{dsl_id}/test-failed/{i} to store failed tests
@@ -124,27 +138,67 @@ def gen_flow_once(
             failed_tests_sub_dir = failed_tests_dir / f"{exists_sub_dir_count + 1}"
             failed_tests_sub_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Removing {len(test_compiler.failed_tests)} non-compiled tests into {failed_tests_dir}...")
-            for failed_test in test_compiler.failed_tests:
+            for failed_test_abspath in test_compiler.failed_tests:
                 # move the failed test to the failed tests subdirectory
-                failed_test_path = dsl_ws_test_dir / failed_test
-                if failed_test_path.exists():
-                    failed_test_path.rename(failed_tests_sub_dir / failed_test)
+                test_name = Path(failed_test_abspath).name
+                if failed_test_abspath.exists():
+                    failed_test_abspath.rename(failed_tests_sub_dir / test_name)
                 else:
-                    raise FileNotFoundError(f"Failed test {failed_test} not found in {dsl_ws_test_dir}")
+                    raise FileNotFoundError(f"Failed test {failed_test_abspath} not found")
+    return True
 
-    # validate tests
-    dsl_val_res = validate_tests(dsl_id)
-    gen_res.update(dsl_val_res)
-    # rearrage and save the test info based on validation results
-    rearraged_test_info, gen_res = rearrage_test_info(dsl_ws_test_dir, gen_res)
-    save_test_info(rearraged_test_info, dsl_ws_test_dir, do_test_aug=do_test_aug)
-    # [Verify] Mismatch tests -> Refine test cases
-    mismatch_ratio = len(rearraged_test_info["mismatch"]) / test_case_count if test_case_count > 0 else 1
-    if mismatch_ratio > 0.5:
-        logger.warning(f"Mismatch ratio {mismatch_ratio:.2f} is too high, try refining test cases...")
-        return STATUS_REFINE, gen_res
 
-    return STATUS_SUCCEED, gen_res
+def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exist_tests: bool = False) -> dict:
+    """
+    Generate tests and validate for a single DSL, including compilation and validation. Return val_res.\
+    return: dict containing validation results, empty dict means gen failed.
+    """
+    dsl_ws = Path("kirin_ws") / dsl_id
+    dsl_ws_test_dir = dsl_ws / "test"
+
+    for mismatch_retry_time in range(2):
+        # generate compilable tests in the tmp test dir
+        gen_compile_status = gen_compilable_tests(dsl_id, checker_dsl, gen_type, use_exist_tests)
+        if not gen_compile_status:
+            return dict()
+        tmp_test_manager = TestManager(dsl_ws / "test-tmp")
+
+        # validate tests in the tmp test dir
+        tmp_val_res = validate_tests(dsl_id, test_dir_name="test-tmp")
+        rearraged_test_info, tmp_val_res = tmp_test_manager.rearrange_test_info(tmp_val_res)
+        tmp_test_manager.save_test_info(rearraged_test_info)
+
+        # [Verify] Mismatch tests -> Refine test cases
+        test_count = sum(list(map(len, rearraged_test_info.values())))
+        mismatch_test_count = len(rearraged_test_info.get("mis_alerting", [])) + len(
+            rearraged_test_info.get("mis_non_alerting", [])
+        )
+        mismatch_ratio = mismatch_test_count / test_count if test_count > 0 else 1
+        if mismatch_ratio > MISMATCH_THRESHOLD:
+            logger.warning(f"Mismatch ratio {mismatch_ratio:.2f} is too high, try refining test cases...")
+            # clean up the tmp test dir
+            create_dir_with_path(dsl_ws_test_dir, cleanup=True)
+            # refine the tests
+            if rearraged_test_info.get("mis_alerting", []):
+                refined_alerting_tests = refine_checker_tests(
+                    rearraged_test_info["mis_alerting"], checker_dsl, gen_type="alerting"
+                )
+            if rearraged_test_info.get("mis_non_alerting", []):
+                refined_non_alerting_tests = refine_checker_tests(
+                    rearraged_test_info["mis_non_alerting"], checker_dsl, gen_type="non-alerting"
+                )
+            tmp_test_manager.save_test_info(rearrage_test_info)
+            # in the next round, we will use the saved rearranged tests
+            use_exist_tests = True
+        else:
+            # saving tests to the final test directory
+            dsl_ws_test_dir = dsl_ws / "test"
+            logger.info(f"Adding rearranged tests to {dsl_ws_test_dir} after compilation and validation.")
+            tmp_test_manager.append_test_info(rearraged_test_info, target_test_dir=dsl_ws_test_dir)
+            # validate the final tests in the test directory
+            return validate_tests(dsl_id, test_dir_name="test")
+
+    return dict()
 
 
 def gen_flow_regression(dsl_info: DslInfoDict):
