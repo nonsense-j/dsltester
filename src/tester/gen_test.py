@@ -185,7 +185,7 @@ def gen_checker_tests(
 
 def refine_checker_tests(
     mismatch_test_list: list[str], checker_dsl: str, refine_type: str, retry_max_attempts: int = 1
-) -> tuple[list[str], list[str]]:
+) -> list[str]:
     """
     Refine the generated test cases by checking the syntax and removing invalid ones.
     """

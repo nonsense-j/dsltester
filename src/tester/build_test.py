@@ -39,8 +39,8 @@ class TestCompiler:
             logger.info(f"No checker provided, using default {dsl_n1_file} for tests in {self.test_dir}.")
             self.checker_dsl = dsl_n1_file.read_text(encoding="utf-8")
 
-        self.test_filepaths_str: list[str] = [str(test_file) for test_file in self.test_dir.rglob("*.java")]
-        if len(self.test_filepaths_str) == 0:
+        self.test_abspath_list: list[str] = [str(test_file.absolute()) for test_file in self.test_dir.rglob("*.java")]
+        if len(self.test_abspath_list) == 0:
             logger.error(f"--> No test cases are found in {self.test_dir}!")
             raise AssertionError(f"--> No test cases are found in {self.test_dir}!")
 
@@ -60,7 +60,7 @@ class TestCompiler:
         # third-party lib related (all identified by tree-sitter)
         self.need_third_party_lib: bool = self.lib_dir.is_dir()
 
-        self.failed_tests: list[str] = []  # to store the failed test cases
+        self.failed_tests: list[str] = []  # to store the failed test absolute paths
 
     def compile_lib_code(self) -> tuple[bool, str]:
         """
@@ -144,29 +144,29 @@ class TestCompiler:
 
         error_map = dict()
         # Use ThreadPoolExecutor for parallel compilation
-        max_workers = min(len(self.test_filepaths_str), 8)  # Limit to 8 concurrent processes
+        max_workers = min(len(self.test_abspath_list), 8)  # Limit to 8 concurrent processes
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all compilation tasks
             future_to_file = {
-                executor.submit(self._compile_single_file, java_file): java_file
-                for java_file in self.test_filepaths_str
+                executor.submit(self._compile_single_file, test_abspath): test_abspath
+                for test_abspath in self.test_abspath_list
             }
 
             # Collect results
             for future in concurrent.futures.as_completed(future_to_file):
-                java_file, success, error_msg = future.result()
+                test_abspath, success, error_msg = future.result()
                 if not success:
-                    error_map[java_file] = error_msg
+                    error_map[test_abspath] = error_msg
 
         if not error_map:
-            logger.info(f"Successfully compiled all {len(self.test_filepaths_str)} test cases for {self.dsl_id}.")
+            logger.info(f"Successfully compiled all {len(self.test_abspath_list)} test cases for {self.dsl_id}.")
         else:
             self.failed_tests = sorted(error_map.keys())
             sorted_errors = [error_map[key] for key in self.failed_tests]
             error_msg = "\n".join(sorted_errors)
             logger.warning(
-                f"--> Failed to compile {len(self.failed_tests)} out of {len(self.test_filepaths_str)} files:\n{error_msg}"
+                f"--> Failed to compile {len(self.failed_tests)} out of {len(self.test_abspath_list)} files:\n{error_msg}"
             )
 
         # clean target directory if needed
@@ -297,7 +297,7 @@ class TestCompiler:
 
             if len(test_case_list) != len(error_map.keys()):
                 logger.warning(
-                    f"--> Output test count mismatches: {len(test_case_list)} != {len(self.test_filepaths_str)}."
+                    f"--> Output test count mismatches: {len(test_case_list)} != {len(self.test_abspath_list)}."
                 )
             else:
                 # replace the test cases with the fixed ones in full_test_case_list

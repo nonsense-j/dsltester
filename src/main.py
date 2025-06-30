@@ -179,16 +179,26 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
             # clean up the tmp test dir
             create_dir_with_path(dsl_ws_test_dir, cleanup=True)
             # refine the tests
+            refined_alerting_test_list = [t[1] for t in rearraged_test_info.get("alerting", [])]
+            refined_non_alerting_test_list = [t[1] for t in rearraged_test_info.get("non_alerting", [])]
+
             if rearraged_test_info.get("mis_alerting", []):
-                refined_alerting_tests = refine_checker_tests(
-                    rearraged_test_info["mis_alerting"], checker_dsl, gen_type="alerting"
-                )
+                mis_alerting_test_list = [t[1] for t in rearraged_test_info["mis_alerting"]]
+                refined_alerting_tests = refine_checker_tests(mis_alerting_test_list, checker_dsl, gen_type="alerting")
+                refined_alerting_test_list.extend(refined_alerting_tests)
             if rearraged_test_info.get("mis_non_alerting", []):
+                mis_non_alerting_test_list = [t[1] for t in rearraged_test_info["mis_non_alerting"]]
                 refined_non_alerting_tests = refine_checker_tests(
-                    rearraged_test_info["mis_non_alerting"], checker_dsl, gen_type="non-alerting"
+                    mis_non_alerting_test_list, checker_dsl, gen_type="non-alerting"
                 )
-            tmp_test_manager.save_test_info(rearrage_test_info)
-            # in the next round, we will use the saved rearranged tests
+                refined_non_alerting_test_list.extend(refined_non_alerting_tests)
+
+            refined_test_info = tmp_test_manager.create_test_info(
+                alerting_test_list=refined_alerting_test_list,
+                non_alerting_test_list=refined_non_alerting_test_list,
+            )
+            tmp_test_manager.save_test_info(refined_test_info)
+            # in the next round, we will use the saved refined tests
             use_exist_tests = True
         else:
             # saving tests to the final test directory
@@ -211,12 +221,12 @@ def gen_flow_regression(dsl_info: DslInfoDict):
     dsl_ws_test_dir = dsl_ws / "test"
 
     # initial test generation flow
-    gen_flow_status, gen_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="all", use_exist_tests=True)
+    val_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="all", use_exist_tests=True)
 
-    if gen_flow_status == STATUS_RETRY:
+    if not val_res:
         logger.info(f"==> Retrying test generation for DSL {dsl_id}...")
-        gen_flow_status, gen_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="all", use_exist_tests=False)
-    elif gen_flow_status == STATUS_REFINE:
+        val_res = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="all", use_exist_tests=False)
+    else:
         logger.info(f"==> Refining test generation for DSL {dsl_id}...")
 
     # check if non-alerting tests are generated

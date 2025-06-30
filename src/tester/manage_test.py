@@ -66,35 +66,20 @@ class TestManager:
         logger.info(f"Initialize TestManager with test directory: {test_dir}")
         self.test_dir = test_dir
 
-    def collect_local_test_info(self) -> TestInfoDict:
-        """
-        Collect test information from the test directory.
-        """
-        test_info = TestInfoDict(alerting=[], non_alerting=[], mismatch=[])
-
-        alert_dir = self.test_dir / "alert"
-        for test_file in sorted(alert_dir.glob("AlertingTest*.java")):
-            test_code = test_file.read_text(encoding="utf-8")
-            class_name = test_file.stem
-            test_info["alerting"].append((class_name, test_code))
-
-        non_alert_dir = self.test_dir / "no-alert"
-        for test_file in sorted(non_alert_dir.glob("NonAlertingTest*.java")):
-            test_code = test_file.read_text(encoding="utf-8")
-            class_name = test_file.stem
-            test_info["non_alerting"].append((class_name, test_code))
-
-        return test_info
-
-    def collect_local_start_ids(self) -> TestIdxDict:
+    def collect_local_start_ids(self, test_dir: Path = None) -> TestIdxDict:
         """
         Collect the start ids for appending alerting, non-alerting, and mismatch tests from the test directory.
         :return: TestIdxDict containing the start ids for alerting, non-alerting, and mismatch tests.
         """
-        alerting_count = len(list(self.test_dir.glob("alert/AlertingTest*.java")))
-        mismatch_alert_count = len(list(self.test_dir.glob("alert/MisAlertingTest*.java")))
-        non_alerting_count = len(list(self.test_dir.glob("no-alert/NonAlertingTest*.java")))
-        mismatch_non_alerting_count = len(list(self.test_dir.glob("no-alert/MisNonAlertingTest*.java")))
+        if not test_dir:
+            test_dir = self.test_dir
+        alerting_count = len(list(test_dir.glob("alert/AlertingTest*.java")))
+        mismatch_alert_count = len(list(test_dir.glob("alert/MisAlertingTest*.java")))
+        non_alerting_count = len(list(test_dir.glob("no-alert/NonAlertingTest*.java")))
+        mismatch_non_alerting_count = len(list(test_dir.glob("no-alert/MisNonAlertingTest*.java")))
+        logger.info(
+            f"Found existed tests: alerting({alerting_count}), non-alerting({non_alerting_count}), mis_alerting({mismatch_alert_count}), mis_non_alerting=({mismatch_non_alerting_count})"
+        )
 
         return TestIdxDict(
             alerting_id=alerting_count + 1,
@@ -109,28 +94,35 @@ class TestManager:
         non_alerting_test_list: list[str],
         mismatch_alerting_test_list: list[str] = [],
         mismatch_non_alerting_test_list: list[str] = [],
-        start_id_map: TestIdxDict = None,
+        append_test_dir: Path = None,
     ) -> TestInfoDict:
         """
         create test info dict with alerting and non-alerting test cases.
+        If do_test_aug is True, tests will be named from 1.
+        If do_test_aug is False, tests will be named from the current count in the test directory.
         :param alerting_test_list: list of alerting test cases
         :param non_alerting_test_list: list of non-alerting test cases
         :param mismatch_alerting_test_list: list of mismatch alerting test cases
         :param mismatch_non_alerting_test_list: list of mismatch non-alerting test cases
-        :param start_id_map: start ids for alerting, non-alerting, mismatch alerting, and mismatch non-alerting tests
+        :param append_test_dir: whether to augment the test cases with new ids (start id from collect_local_start_ids)
         :return: test info dict
         """
-        if not alerting_test_list and not non_alerting_test_list:
-            logger.warning(f"--> No test cases found! Returning empty test info.")
-            return dict()
-        if start_id_map is None:
+        test_info = TestInfoDict(alerting=[], non_alerting=[])
+        # set start ids for all types of tests
+        if append_test_dir:
+            start_id_map = self.collect_local_start_ids(append_test_dir)
+            logger.info(
+                f"Appending test cases with start ids: {start_id_map['alerting_id']}, {start_id_map['non_alerting_id']}, "
+                f"{start_id_map['mis_alerting_id']}, {start_id_map['mis_non_alerting_id']}"
+            )
+        else:
             start_id_map = TestIdxDict(
                 alerting_id=1,
                 non_alerting_id=1,
                 mis_alerting_id=1,
                 mis_non_alerting_id=1,
             )
-        test_info = TestInfoDict(alerting=[], non_alerting=[])
+
         for i, test_case in enumerate(alerting_test_list):
             class_name = extract_main_class(test_case)
             expected_class_name = f"AlertingTest{start_id_map['alerting_id'] + i}"
@@ -165,29 +157,34 @@ class TestManager:
 
         return test_info
 
-    def save_test_info(self, test_info: TestInfoDict, do_test_aug: bool = False) -> None:
+    def save_test_info(self, test_info: TestInfoDict, append_test_dir: Path = None) -> None:
         """
-        Save the test information to the test directory.
+        Save the test information to the test directory from scratch.
+        Each time, the test dir will be cleaned up and recreated.
         Args:
             test_info (TestInfoDict): The test information dictionary.
+            do_test_aug (bool): Whether to add the test cases without cleanning existing ones.
         """
         assert self.test_dir.is_dir(), f"--> Test directory {self.test_dir} not found!"
-        if not do_test_aug:
+
+        if not append_test_dir:
+            test_dir = self.test_dir
             create_dir_with_path(self.test_dir, cleanup=True)
+        else:
+            test_dir = append_test_dir
+            logger.info(f"Appending test information to {append_test_dir} without cleanup.")
 
         for label, sub_test_info in test_info.items():
             logger.info(f"Saving {len(sub_test_info)} {label} test cases...")
             # Alerting/MisAlerting -> alert; NonAlerting/MisNonAlerting -> no-alert
-            sub_test_dir = self.test_dir / "no-alert" if "non_alerting" in label else self.test_dir / "alert"
+            sub_test_dir = test_dir / "no-alert" if "non_alerting" in label else test_dir / "alert"
             sub_test_dir.mkdir(parents=True, exist_ok=True)
             for single_test_info in sub_test_info:
                 file_stem, test_case_code = single_test_info
                 test_case_path = sub_test_dir / f"{file_stem}.java"
-                if do_test_aug and test_case_path.exists():
-                    logger.warning(f"Test case {test_case_path} already exists, do overwrite.")
                 test_case_path.write_text(test_case_code, encoding="utf-8")
 
-        logger.info(f"All test cases saved to {self.test_dir}")
+        logger.info(f"All test cases have saved to {test_dir}.")
 
     def rearrange_test_info(self, val_res: dict) -> tuple[TestInfoDict, dict]:
         """
@@ -205,14 +202,15 @@ class TestManager:
         assert "DSL_ORI" in val_res, f"--> DSL_ORI not found in the generation result {val_res}"
         logger.info("Rearranging test directory based on generation result...")
 
-        true_alerting_tests = []
-        true_non_alerting_tests = []
-        mismatch_alerting_tests = [
-            p.read_text(encoding="utf-8") for p in sorted(self.test_dir.glob("alert/MisAlerting*.java"))
+        true_alerting_test_info = []
+        true_non_alerting_test_info = []
+        mis_alerting_test_info = [
+            (p.stem, p.read_text(encoding="utf-8")) for p in sorted(self.test_dir.glob("alert/MisAlerting*.java"))
         ]
-        mismatch_non_alerting_tests = [
-            p.read_text(encoding="utf-8") for p in sorted(self.test_dir.glob("no-alert/MisNonAlerting*.java"))
+        mis_non_alerting_test_info = [
+            (p.stem, p.read_text(encoding="utf-8")) for p in sorted(self.test_dir.glob("no-alert/MisNonAlerting*.java"))
         ]
+
         test_change_map = dict()
         mis_alerting_count = 0
         mis_non_alerting_count = 0
@@ -220,14 +218,15 @@ class TestManager:
         for alerting_file in val_res["DSL_ORI"]["report"].keys():
             if alerting_file.startswith("Alerting"):
                 alerting_test_code = (self.test_dir / "alert" / alerting_file).read_text(encoding="utf-8")
-                true_alerting_tests.append(alerting_test_code)
-                new_alerting_file = f"AlertingTest{len(true_alerting_tests)}.java"
+                new_alerting_file = f"AlertingTest{len(true_alerting_test_info) + 1}.java"
+                true_alerting_test_info.append((Path(new_alerting_file).stem, alerting_test_code))
                 if alerting_file != new_alerting_file:
                     test_change_map[alerting_file] = new_alerting_file
             elif alerting_file.startswith("NonAlerting"):
                 alerting_test_code = (self.test_dir / "no-alert" / alerting_file).read_text(encoding="utf-8")
-                mismatch_alerting_tests.append(alerting_test_code)
-                test_change_map[alerting_file] = f"MisAlertingTest{len(mismatch_alerting_tests)}.java"
+                new_file_name = f"MisAlertingTest{len(mis_alerting_test_info)}.java"
+                test_change_map[alerting_file] = new_file_name
+                mis_alerting_test_info.append((Path(new_file_name).stem, alerting_test_code))
                 mis_alerting_count += 1
             else:
                 continue
@@ -235,14 +234,15 @@ class TestManager:
         for non_alerting_file in val_res["DSL_ORI"]["pass"]:
             if non_alerting_file.startswith("NonAlerting"):
                 non_alerting_test_code = (self.test_dir / "no-alert" / non_alerting_file).read_text(encoding="utf-8")
-                true_non_alerting_tests.append(non_alerting_test_code)
-                new_non_alerting_file = f"NonAlertingTest{len(true_non_alerting_tests)}.java"
+                new_non_alerting_file = f"NonAlertingTest{len(true_non_alerting_test_info)}.java"
+                true_non_alerting_test_info.append((Path(new_non_alerting_file).stem, non_alerting_test_code))
                 if non_alerting_file != new_non_alerting_file:
                     test_change_map[non_alerting_file] = new_non_alerting_file
             elif non_alerting_file.startswith("Alerting"):
                 non_alerting_test_code = (self.test_dir / "alert" / non_alerting_file).read_text(encoding="utf-8")
-                mismatch_non_alerting_tests.append(non_alerting_test_code)
-                test_change_map[non_alerting_file] = f"MisNonAlertingTest{len(mismatch_non_alerting_tests)}.java"
+                new_file_name = f"MisNonAlertingTest{len(mis_non_alerting_test_info)}.java"
+                mis_non_alerting_test_info.append((Path(new_file_name).stem, non_alerting_test_code))
+                test_change_map[non_alerting_file] = new_file_name
                 mis_non_alerting_count += 1
             else:
                 continue
@@ -250,11 +250,11 @@ class TestManager:
         logger.info(
             f"Rearrage result: identified {mis_alerting_count} MismatchAlerting and {mis_non_alerting_count} Mismatch-Non-Alerting."
         )
-        rearraged_test_info = self.create_test_info(
-            alerting_test_list=true_alerting_tests,
-            non_alerting_test_list=true_non_alerting_tests,
-            mismatch_alerting_test_list=mismatch_alerting_tests,
-            mismatch_non_alerting_test_list=mismatch_non_alerting_tests,
+        rearraged_test_info = TestInfoDict(
+            alerting=true_alerting_test_info,
+            non_alerting=true_non_alerting_test_info,
+            mis_alerting=mis_alerting_test_info,
+            mis_non_alerting=mis_non_alerting_test_info,
         )
 
         val_res_str = json.dumps(val_res)
@@ -263,3 +263,21 @@ class TestManager:
         new_val_res = json.loads(new_val_res_str)
 
         return rearraged_test_info, new_val_res
+
+    def append_test_info(self, final_test_info: TestInfoDict, target_test_dir: Path = None) -> TestInfoDict:
+        """
+        Append tests with test info to the aggregate test directory.
+        """
+        if not target_test_dir:
+            test_dir = self.test_dir if self.test_dir.endswith("/test") else self.test_dir.parent / "test"
+
+        logger.info(f"Apending final rearranged test information to {test_dir}")
+        # collect the start ids for appending alerting, non-alerting, and mismatch tests
+        new_test_info = self.create_test_info(
+            alerting_test_list=[t[1] for t in final_test_info["alerting"]],
+            non_alerting_test_list=[t[1] for t in final_test_info["non_alerting"]],
+            mismatch_alerting_test_list=[t[1] for t in final_test_info["mis_alerting"]],
+            mismatch_non_alerting_test_list=[t[1] for t in final_test_info["mis_non_alerting"]],
+            append_test_dir=target_test_dir,
+        )
+        self.save_test_info(new_test_info, append_test_dir=target_test_dir)

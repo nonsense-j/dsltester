@@ -8,22 +8,23 @@ from src.utils.types import DslValResDict
 from src.utils._helper import sorted_test_files
 
 
-def validate_tests(dsl_id) -> DslValResDict:
+def validate_tests(dsl_id, test_dir_name: str = "test") -> DslValResDict:
     """
     validate dsl in its corresponding kirin_ws: kirin_ws/{dsl_id}
     Note: all the dsls should have been prepared in the kirin_ws
     """
-    logger.info(f"==> Validating DSL: {dsl_id}")
+    assert test_dir_name in ["test", "test-tmp"], f"Invalid test directory name: {test_dir_name}!"
     dsl_ws_dir = Path(f"kirin_ws/{dsl_id}")
     if not dsl_ws_dir.is_dir():
         logger.error(f"-> DSL workspace directory {dsl_ws_dir} does not exist!")
         return False
 
     dsl_dir = dsl_ws_dir / "dsl"
-    test_dir = dsl_ws_dir / "test"
+    test_dir = dsl_ws_dir / test_dir_name
     lib_dir = dsl_ws_dir / "lib"
     report_dir = dsl_ws_dir / "report"
 
+    logger.info(f"==> Validating checker tests in {test_dir}")
     # execute kirin dsl (report dir will be automatically created in the test dir)
     if lib_dir.exists():
         KirinRunner.execute_kirin_dsl(dsl_dir, test_dir, report_dir, lib_dir)
