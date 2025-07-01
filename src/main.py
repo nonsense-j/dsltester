@@ -131,9 +131,10 @@ def gen_compilable_tests(dsl_id: str, checker_dsl: str, gen_type: str = "all", u
             failed_tests_sub_dir = failed_tests_dir / f"{exists_sub_dir_count + 1}"
             failed_tests_sub_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Removing {len(test_compiler.failed_tests)} non-compiled tests into {failed_tests_dir}...")
-            for failed_test_abspath in test_compiler.failed_tests:
+            for failed_test_str in test_compiler.failed_tests:
                 # move the failed test to the failed tests subdirectory
-                test_name = Path(failed_test_abspath).name
+                failed_test_abspath = Path(failed_test_str)
+                test_name = failed_test_abspath.name
                 if failed_test_abspath.exists():
                     failed_test_abspath.rename(failed_tests_sub_dir / test_name)
                 else:
