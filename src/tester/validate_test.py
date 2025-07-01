@@ -18,7 +18,7 @@ def validate_tests(dsl_id, val_type: str = "all") -> DslValResDict:
     cur_ws_dir = Path(f"kirin_ws/{dsl_id}") if val_type == "all" else Path(f"kirin_ws/{dsl_id}/tmp")
     if not cur_ws_dir.is_dir():
         logger.error(f"-> Curent workspace directory {cur_ws_dir} does not exist!")
-        return False
+        return dict()
 
     dsl_dir = cur_ws_dir / "dsl"
     test_dir = cur_ws_dir / "test"
@@ -65,7 +65,7 @@ def parse_xml_results(dsl_id, val_type: str = "all") -> dict[str, DslValResDict]
     report_dir = Path(f"kirin_ws/{dsl_id}/report") if val_type == "all" else Path(f"kirin_ws/{dsl_id}/tmp/report")
     if not report_dir.is_dir():
         logger.error(f"-> Report directory {report_dir} does not exist!")
-        return False
+        return dict()
 
     assert len(list(report_dir.glob("*.xml"))) == 1, f"More than one XML file found in {report_dir}"
     xml_res_file = report_dir / "error_report_1.xml"

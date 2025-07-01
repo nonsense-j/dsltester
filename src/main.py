@@ -63,6 +63,30 @@ def prep_dsl_dir(dsl_info: DslInfoDict):
     save_dsl_prep_res(dsl_opp_prep_res, dsl_ws_dsl_dir, is_opposite=True)
 
 
+def move_non_compilable_tests(failed_test_abspath_strlist: list[str], target_dir: Path):
+    """
+    Save non-compilable tests to a specified directory.
+    :param failed_test_abspath_strlist: List of absolute paths to the failed test files.
+    :param target_dir: Directory where the failed tests will be saved.
+    """
+    if not target_dir.is_dir():
+        target_dir.mkdir(parents=True, exist_ok=True)
+    # create a subdirectory kirin_ws/{dsl_id}/test-failed/{i} to store failed tests
+    target_dir.mkdir(parents=True, exist_ok=True)
+    exists_sub_dir_count = len(list(target_dir.glob("*/")))
+    failed_tests_sub_dir = target_dir / f"{exists_sub_dir_count + 1}"
+    failed_tests_sub_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Removing {len(failed_test_abspath_strlist)} non-compiled tests into {target_dir}...")
+    for failed_test_str in failed_test_abspath_strlist:
+        # move the failed test to the failed tests subdirectory
+        failed_test_abspath = Path(failed_test_str)
+        test_name = failed_test_abspath.name
+        if failed_test_abspath.exists():
+            failed_test_abspath.rename(failed_tests_sub_dir / test_name)
+        else:
+            raise FileNotFoundError(f"Failed test {failed_test_abspath} not found")
+
+
 def gen_compilable_tests(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exist_tests: bool = False) -> bool:
     """
     Generate tests and filter non-compiled ones for a single DSL in the tmp/test dir.
@@ -118,27 +142,13 @@ def gen_compilable_tests(dsl_id: str, checker_dsl: str, gen_type: str = "all", u
     # [Verify] Non-compilable tests -> return False (need retry)
     if not test_compile_status:
         compile_fail_ratio = len(test_compiler.failed_tests) / test_count if test_count > 0 else 1
+        move_non_compilable_tests(test_compiler.failed_tests, dsl_ws / "test-fail")
         if compile_fail_ratio > COMPILATION_FAIL_THRESHOLD:
             logger.warning(
                 f"Compile fail ratio {compile_fail_ratio:.2f} is too high, consider regenerating test cases."
             )
             return False
-        else:
-            failed_tests_dir = dsl_ws / "test-fail"
-            # create a subdirectory kirin_ws/{dsl_id}/test-failed/{i} to store failed tests
-            failed_tests_dir.mkdir(parents=True, exist_ok=True)
-            exists_sub_dir_count = len(list(failed_tests_dir.glob("*/")))
-            failed_tests_sub_dir = failed_tests_dir / f"{exists_sub_dir_count + 1}"
-            failed_tests_sub_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Removing {len(test_compiler.failed_tests)} non-compiled tests into {failed_tests_dir}...")
-            for failed_test_str in test_compiler.failed_tests:
-                # move the failed test to the failed tests subdirectory
-                failed_test_abspath = Path(failed_test_str)
-                test_name = failed_test_abspath.name
-                if failed_test_abspath.exists():
-                    failed_test_abspath.rename(failed_tests_sub_dir / test_name)
-                else:
-                    raise FileNotFoundError(f"Failed test {failed_test_abspath} not found")
+
     return True
 
 
@@ -186,13 +196,13 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
             refined_alerting_test_list = [t[1] for t in rearraged_test_info.get("alerting", [])]
             refined_non_alerting_test_list = [t[1] for t in rearraged_test_info.get("non_alerting", [])]
 
-            if rearraged_test_info.get("mis_alerting", []):
+            if rearraged_test_info.get("mis_non_alerting", []):
                 mis_alerting_test_list = [t[1] for t in rearraged_test_info["mis_alerting"]]
                 refined_alerting_tests = refine_checker_tests(
                     mis_alerting_test_list, checker_dsl, refine_type="alerting"
                 )
                 refined_alerting_test_list.extend(refined_alerting_tests)
-            if rearraged_test_info.get("mis_non_alerting", []):
+            if rearraged_test_info.get("mis_alerting", []):
                 mis_non_alerting_test_list = [t[1] for t in rearraged_test_info["mis_non_alerting"]]
                 refined_non_alerting_tests = refine_checker_tests(
                     mis_non_alerting_test_list, checker_dsl, refine_type="non-alerting"

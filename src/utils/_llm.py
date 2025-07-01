@@ -79,7 +79,7 @@ class LLMWrapper:
         """
         [Entrance] Query LLM with user prompt and system prompt
         """
-        assert len(cls.single_call_chain) <= 3, f"--> [LLM] API call limit reached: {len(cls.single_call_chain)}."
+        assert len(cls.single_call_chain) <= 10, f"--> [LLM] API call limit reached: {len(cls.single_call_chain)}."
         if system_prompt is None:
             messages = [{"role": "user", "content": user_prompt}]
         else:
