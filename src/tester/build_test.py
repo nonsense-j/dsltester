@@ -32,12 +32,11 @@ class TestCompiler:
         self.test_dir = test_dir if test_dir else self.dsl_ws_dir / "test"
         assert self.test_dir.is_dir(), f"--> Test dirpath {self.test_dir} does not exists!"
 
-        # by default, tests follows the DSL_N1.kirin
         self.checker_dsl = checker_dsl
         if not checker_dsl:
-            dsl_n1_file = self.dsl_ws_dir / "dsl/DSL_ORI.kirin"
-            logger.info(f"No checker provided, using default {dsl_n1_file} for tests in {self.test_dir}.")
-            self.checker_dsl = dsl_n1_file.read_text(encoding="utf-8")
+            default_dsl_path = self.dsl_ws_dir / "dsl/DSL_ORI.kirin"
+            logger.info(f"No checker provided, using default {default_dsl_path} for tests in {self.test_dir}.")
+            self.checker_dsl = default_dsl_path.read_text(encoding="utf-8")
 
         self.test_abspath_list: list[str] = [str(test_file.absolute()) for test_file in self.test_dir.rglob("*.java")]
         if len(self.test_abspath_list) == 0:
@@ -344,17 +343,14 @@ class TestCompiler:
         """
         logger.info(f"==> Building test cases for {self.dsl_id}...")
 
-        dsl_ws_dir = Path(f"kirin_ws/{self.dsl_id}")
-        test_dir = dsl_ws_dir / "test"
-        assert test_dir.is_dir(), f"--> Test dirpath {test_dir} does not exists!"
-        all_test_filepaths = list(test_dir.rglob("*.java"))
-        if len(all_test_filepaths) == 0:
-            logger.error(f"--> No test cases are found in {test_dir}!")
+        assert self.test_dir.is_dir(), f"--> Test dirpath {self.test_dir} does not exists!"
+        if len(self.test_abspath_list) == 0:
+            logger.error(f"--> No test cases are found in {self.test_dir}!")
             return True
 
         # parse tests' dependency using tree-sitter
         gen_by_ts = False
-        ts_mocker = MockLibGenTS(test_dir)
+        ts_mocker = MockLibGenTS(self.test_dir)
         lib_code_res = ts_mocker.gen_mock_lib_code_ts()
         self.need_third_party_lib = True if lib_code_res else False
         third_class_fqns_ts = set(lib_code_res.keys())

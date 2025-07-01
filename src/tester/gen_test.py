@@ -1,12 +1,10 @@
 import re
 from pathlib import Path
-from typing import Optional
 
-from .parse_dsl import preprocess_dsl
 from src.prompts import PROMPTS, SYS_PROMPTS
 from src.utils._logger import logger
 from src.utils._llm import LLMWrapper
-from src.utils._helper import validate_syntax, create_test_info
+from src.utils._helper import validate_syntax
 
 
 def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:

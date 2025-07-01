@@ -190,34 +190,3 @@ def collect_failed_dsl_paths(dsl_id, val_res: dict) -> list[Path]:
                 failed_sub_dsl_paths.append(dsl_dir / "opp" / f"{checker_name}.kirin")
 
     return failed_sub_dsl_paths
-
-
-if __name__ == "__main__":
-    # test rearrange_test_info using kirin_ws\ONLINE_Use_Unsafe_Algorithm_IDEA\test
-    test_dir = Path("kirin_ws/ONLINE_Use_Unsafe_Algorithm_IDEA/test-tmp")
-    val_res = {
-        "DSL_ORI": {
-            "report": {
-                "AlertingTest1.java": [1],
-                "AlertingTest2.java": [1],
-                "AlertingTest4.java": [2],
-                "NonAlertingTest1.java": [3],
-            },
-            "pass": ["NonAlertingTest2.java", "NonAlertingTest3.java", "AlertingTest3.java"],
-        }
-    }
-    re_test_info, new_val_res = rearrage_test_info(test_dir, val_res)
-    logger.info("Rearranged Test Information:")
-    for label in re_test_info:
-        file_list = list(map(lambda x: x[0], re_test_info[label]))
-        logger.info(f"{label}: {', '.join(file_list)}")
-    save_test_info(re_test_info, test_dir, do_test_aug=True)
-
-    # move all the folders in kirin_ws/test-tmp to kirin_ws/test-cur
-    test_cur_dir = Path("kirin_ws/test-cur")
-    test_cur_dir.mkdir(parents=True, exist_ok=True)
-    # using Pathlib rename to move the folder
-    for item in test_dir.iterdir():
-        shutil.move(str(item), str(test_cur_dir / item.name))
-
-    logger.info(f"New Validation Result: {new_val_res}")

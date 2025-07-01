@@ -136,7 +136,7 @@ the checker reports it. Preserve the test's core scenario and main class name wh
 ### Test Cases should be reported by the checker but not
 {wrapped_alerting_tests}
 
-First, briefly analyze the provided test cases and the checker DSL to identify why the tests are not reported. Then, output modified \
+First, carefully analyze the provided test cases and the checker DSL to identify why the tests are not reported. Then, output modified \
 test cases in the same order without detailed explanations, each wrapped in "<alerting_test>" and "</alerting_test>".
 """
 
@@ -166,7 +166,7 @@ Preserve the test's core scenario and main class name while closing the gap betw
 ### Test Cases Incorrectly Reported by Checker
 {wrapped_non_alerting_tests}
 
-First, briefly analyze the provided test cases and the checker DSL to identify why the tests are incorrectly reported. Then, output \
+First, carefully analyze the provided test cases and the checker DSL to identify why the tests are incorrectly reported. Then, output \
 modified test cases in the same order without detailed explanations, each wrapped in "<non_alerting_test>" and "</non_alerting_test>".
 """
 
@@ -224,22 +224,19 @@ PROMPTS[
     "fix_test_compile_with_lib"
 ] = """\
 ## General Goal
-You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files \
-(warnings can be ignored). As inputs, I will provide you with a list of the Java code files, their mocked third-party library code as \
-dependencies and the error message. When compiling these Java files with the dependency libs, the compiler reports errors. \
-You need to resolve these errors by modifying the Java files and the library code if necessary. 
+You are an expert in Java programming and code analysis. Your goal is to fix compilation errors in the given checker tests (Java code files).\
+These tests are designed to be reported (alerting) or passed (non-alerting) by a static code checker written in DSL format but fail to be compiled. \
+As inputs, I will provide you with a list of the checker tests, their mocked third-party library code as dependencies, and the error message. \
+When comiling the input tests with the provided library code, compilation errors with the error message will be raised. \
+You need to resolve these errors by modifying the test and the library code if necessary. 
 
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Fix all compilation errors in the provided Java code files, while ignoring warnings. Since the error \
 message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems.
-2. Maintain Original Logic. Never change the original intent of each file, which is expressed in the original code comments. \
-Fixed code must still follow the intent described by the comments. While keep original code comments, do not add comments to explain the changes.
-3. Maintain Checker-Reportable Patterns. Ensure that the fixed Java code files still contain checker-matching code patterns to guarantee reportability. \
-The static code checker is written in dsl format as follows:
-<checker_dsl>
-{checker_dsl}
-</checker_dsl>
-
+2. Never change the original alerting or non-alerting logic for each test. During fixing, you must ensure that the alerting tests \
+still contain checker-matching code patterns to guarantee reportability, while the non-alerting tests must not contain such patterns. \
+Checker reportability of a test can be inferred from both the original code comments and main class name (AlertingTest is designed to \
+be reported while NonAlertingTest is expected be non-alerting).
 
 ### Input and Output Format
 For both input and output, each Java code file is wrapped in "<java_file>" and "</java_file>" and each library code is wrapped in \
@@ -247,12 +244,19 @@ For both input and output, each Java code file is wrapped in "<java_file>" and "
 and library code wrapped in the correct format. Unchanged code files and library code should also be output as they are.
 
 ### Input
-- Java code files:
+- Checker test files:
 {wrapped_java_code}
+
 - Mock Library code files:
 {wrapped_lib_code}
+
 - Compilation error message:
 {error_msg}
+
+- Checker DSL:
+<checker_dsl>
+{checker_dsl}
+</checker_dsl>
 
 ### Output
 """

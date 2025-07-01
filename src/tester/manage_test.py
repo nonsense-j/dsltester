@@ -5,9 +5,9 @@ Manage test cases in the folder kirin_ws/{dsl_id}
 import re, json
 from pathlib import Path
 
-from utils._logger import logger
-from utils._helper import create_dir_with_path
-from utils.types import TestInfoDict, TestIdxDict
+from src.utils._logger import logger
+from src.utils._helper import create_dir_with_path
+from src.utils.types import TestInfoDict, TestIdxDict
 
 
 def extract_main_class(test_case: str) -> str:
@@ -269,9 +269,9 @@ class TestManager:
         Append tests with test info to the aggregate test directory.
         """
         if not target_test_dir:
-            test_dir = self.test_dir if self.test_dir.endswith("/test") else self.test_dir.parent / "test"
+            target_test_dir = self.test_dir if self.test_dir.endswith("/test") else self.test_dir.parent / "test"
 
-        logger.info(f"Apending final rearranged test information to {test_dir}")
+        logger.info(f"Apending final rearranged test information to {target_test_dir}")
         # collect the start ids for appending alerting, non-alerting, and mismatch tests
         new_test_info = self.create_test_info(
             alerting_test_list=[t[1] for t in final_test_info["alerting"]],
@@ -281,3 +281,36 @@ class TestManager:
             append_test_dir=target_test_dir,
         )
         self.save_test_info(new_test_info, append_test_dir=target_test_dir)
+
+
+if __name__ == "__main__":
+    # test rearrange_test_info using kirin_ws\ONLINE_Use_Unsafe_Algorithm_IDEA\test
+    test_manager = TestManager(Path("kirin_ws/ONLINE_Use_Unsafe_Algorithm_IDEA/tmp/test"))
+    val_res = {
+        "DSL_ORI": {
+            "report": {
+                "AlertingTest1.java": [1],
+                "AlertingTest2.java": [1],
+                "AlertingTest4.java": [2],
+                "NonAlertingTest1.java": [3],
+            },
+            "pass": ["NonAlertingTest2.java", "NonAlertingTest3.java", "AlertingTest3.java"],
+        }
+    }
+    re_test_info, new_val_res = test_manager.rearrage_test_info(val_res)
+    logger.info("Rearranged Test Information:")
+    for label in re_test_info:
+        file_list = list(map(lambda x: x[0], re_test_info[label]))
+        logger.info(f"{label}: {', '.join(file_list)}")
+    test_manager.save_test_info(re_test_info)
+
+    # move all the folders in kirin_ws/test-tmp to kirin_ws/test-cur
+    test_cur_dir = Path("kirin_ws/test-cur")
+    test_cur_dir.mkdir(parents=True, exist_ok=True)
+    # using Pathlib rename to move the folder
+    import shutil
+
+    for item in test_cur_dir.iterdir():
+        shutil.move(str(item), str(test_cur_dir / item.name))
+
+    logger.info(f"New Validation Result: {new_val_res}")
