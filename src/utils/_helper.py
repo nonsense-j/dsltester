@@ -175,18 +175,18 @@ def collect_failed_dsl_paths(dsl_id, val_res: dict) -> list[Path]:
             return [dsl_dir / "DSL_ORI"]
 
         if not val_res[checker_name]["report"]:
-            # DSL_N1, DSL_N1_S1, DSL_OPP_N1, DSL_OPP_N1_S1, etc.
-            if checker_name.startswith("DSL_N"):
-                if "S" in checker_name:
-                    parent_node_name = re.match(r"^(.*)_S\d+$", checker_name).group(1)
-                    if parent_node_name in failed_sub_dsl_paths:
-                        continue
-                failed_sub_dsl_paths.append(dsl_dir / "norm" / f"{checker_name}.kirin")
-            elif checker_name.startswith("DSL_OPP_N"):
-                if "S" in checker_name:
-                    parent_node_name = re.match(r"^(.*)_S\d+$", checker_name).group(1)
-                    if parent_node_name in failed_sub_dsl_paths:
-                        continue
-                failed_sub_dsl_paths.append(dsl_dir / "opp" / f"{checker_name}.kirin")
+            # DSL_N1, DSL_N1_S1, DSL_OPP_N1_S1, etc.
+            sub_pattern = r"_S\d+$"
+            if re.search(sub_pattern, checker_name):
+                # DSL_N1_S1, DSL_OPP_N1_S1
+                node_id = re.search(r"_N(\d+)", checker_name).group(1)
+                sub_node_dir = dsl_dir / f"sub_n{node_id}"
+                if "OPP" in checker_name:
+                    failed_sub_dsl_paths.append(sub_node_dir / "opp" / f"{checker_name}.kirin")
+                else:
+                    failed_sub_dsl_paths.append(sub_node_dir / "norm" / f"{checker_name}.kirin")
+            else:
+                # DSL_N1, DSL_N2
+                failed_sub_dsl_paths.append(dsl_dir / f"{checker_name}.kirin")
 
     return failed_sub_dsl_paths
