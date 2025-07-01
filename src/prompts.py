@@ -27,7 +27,7 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use undefined or unimported symbols in the code. Never use implicit dependencies (e.g., "import *").\
+Never use undefined or unimported symbols (annotations must also be imported). Strictly import each symbol individually instead of using "import *". \
 Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
@@ -64,7 +64,7 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use undefined or unimported symbols in the code. Never use implicit dependencies (e.g., "import *").\
+Never use undefined or unimported symbols (annotations must also be imported). Strictly import each symbol individually instead of using "import *". \
 Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
@@ -99,7 +99,7 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use undefined symbols and implicit imports (e.g., "import *") in the code. \
+Never use undefined or unimported symbols (annotations must also be imported). Strictly import each symbol individually instead of using "import *". \
 Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
@@ -232,7 +232,7 @@ PROMPTS[
 You are an expert in Java programming and code analysis. Your goal is to fix compilation errors in the given checker tests (Java code files).\
 These tests are designed to be reported (alerting) or passed (non-alerting) by a static code checker written in DSL format but fail to be compiled. \
 As inputs, I will provide you with a list of the checker tests, their mocked third-party library code as dependencies, and the error message. \
-When comiling the input tests with the provided library code, compilation errors with the error message will be raised. \
+When compiling the input tests with the provided library code, compilation errors with the error message will be raised. \
 You need to resolve these errors by modifying the test and the library code if necessary. 
 
 ### Madatory Guidelines for Fixing
@@ -271,30 +271,38 @@ PROMPTS[
     "fix_test_compile_wo_lib"
 ] = """\
 ## General Goal
-You are an expert in Java programming and code analysis. Your goal is to fix the compilation errors in the providing Java code files \
-(warnings can be ignored). As inputs, I will provide you with a list of the Java code files and the compilation error message. \
-You need to generate the fixed Java code files that can pass compilation as output.  
+You are an expert in Java programming and code analysis. Your goal is to fix compilation errors in the given checker tests (Java code files).\
+These tests are designed to be reported (alerting) or passed (non-alerting) by a static code checker written in DSL format but fail to be compiled. \
+As inputs, I will provide you with a list of the checker tests and the error message. These \
+When compiling the input tests directly without dependencies, compilation errors with the error message will be raised. \
+You need to resolve these errors by modifying the test and generate extra library code as dependencies if necessary. 
 
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Fix all compilation errors in the provided Java code files, while ignoring warnings. Since the error \
 message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems.
-2. Maintain Original Logic. Never change the original code logic, which can be inferred from the original code comments. \
-While keep original code comments, do not add comments to explain the changes. 
-3. Maintain Checker-Reportable Patterns. Ensure that the fixed Java code files still contain checker-matching code patterns to guarantee reportability. \
-The static code checker is written in dsl format as follows:
+2. Never change the original alerting or non-alerting logic for each test. During fixing, you must ensure that the alerting tests \
+still contain checker-matching code patterns to guarantee reportability, while the non-alerting tests must not contain such patterns. \
+Checker reportability of a test can be inferred from both the original code comments and main class name (AlertingTest is designed to \
+be reported while NonAlertingTest is expected be non-alerting).
+
+
+### Input and Output Format
+For both input and output, each Java code file is wrapped in "<java_file>" and "</java_file>". If extra library code (classes) is needed for fix, \
+each one should be wrapped in "<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>", where class_fqn is the full qualified name of the third-party class. \
+Directly output all the fixed code files (in the same order as input) and library code (optional) wrapped in the correct format. \
+Unchanged code files and library code should also be output as they are.
+
+### Input
+- Checker test files:
+{wrapped_java_code}
+
+- Compilation error message:
+{error_msg}
+
+- Checker DSL:
 <checker_dsl>
 {checker_dsl}
 </checker_dsl>
-
-### Input and Output Format
-For both input and output, each Java code file must be wrapped in "<java_file>" and "</java_file>" with consistent order, where unchanged \
-Java code files should also be output as they are. Directly output the fixed code files wrapped in the correct format without detailed explanations. \
-
-### Input
-- Java code files:
-{wrapped_java_code}
-- Compilation error message:
-{error_msg}
 
 ### Output
 """
