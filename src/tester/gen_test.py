@@ -200,7 +200,7 @@ def refine_checker_tests(
     test_wrapper = "alerting_test" if refine_type == "alerting" else "non_alerting_test"
     user_prompt = PROMPTS[prompt_map[refine_type]].format(
         checker_dsl=checker_dsl,
-        wrapped_java_code="\n\n".join(
+        wrapped_tests="\n\n".join(
             [f"```<{test_wrapper}>\n{test_code}\n</{test_wrapper}>" for test_code in mismatch_test_list]
         ),
     )

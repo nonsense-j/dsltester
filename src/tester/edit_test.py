@@ -13,6 +13,15 @@ class TestEditor:
 
     JAVA_LANGUAGE = Language(tsjava.language())
     parser = Parser(JAVA_LANGUAGE)
+    # "filename:line_number"
+    skip_file_lines: set[str] = set()
+
+    @classmethod
+    def init(cls):
+        """
+        Initialize the TestEditor class by loading the Java language parser.
+        """
+        cls.skip_file_lines.clear()
 
     @classmethod
     def fix_general_error(cls, error_map: dict[str, str]) -> bool:
@@ -29,6 +38,11 @@ class TestEditor:
             #     logger.info(f"No compilation errors in {file_name}, skip...")
             #     continue
             # check unsupported exception
+
+            if f"{file_name}:{error_msg}" in cls.skip_file_lines:
+                logger.info(f"Skipping {file_name} due to previously fixed errors.")
+                continue
+
             do_fix_flag = False
             unsupported_exception_match = re.search(
                 r"\w+\.java:(\d+): error: unreported (exception|error) (\w+); must be caught or declared to be thrown",
@@ -40,8 +54,14 @@ class TestEditor:
                 test_file = Path(file_name)
                 do_fix_flag = True
                 if test_file.exists():
-                    default_e = "Exception" if exception_name.endswith("Exception") else "Error"
-                    cls.fix_unsupported_exception(test_file, line_number, default_exception=default_e, do_replace=True)
+                    try:
+                        default_e = "Exception" if exception_name.endswith("Exception") else "Error"
+                        cls.fix_unsupported_exception(
+                            test_file, line_number, default_exception=default_e, do_replace=True
+                        )
+                    except Exception as e:
+                        cls.skip_file_lines.add(f"{file_name}:{line_number}")
+                        logger.error(f"Failed to fix unsupported exception in {test_file} at line {line_number}: {e}")
                 else:
                     logger.error(f"Test file {file_name} does not exist.")
 
@@ -55,10 +75,14 @@ class TestEditor:
                 test_file = Path(file_name)
                 do_fix_flag = True
                 if test_file.exists():
-                    correct_exception = "Exception" if wrong_exception.endswith("Exception") else "Error"
-                    cls.fix_never_throw_exception(
-                        test_file, line_number, wrong_exception, correct_exception, do_replace=True
-                    )
+                    try:
+                        correct_exception = "Exception" if wrong_exception.endswith("Exception") else "Error"
+                        cls.fix_never_throw_exception(
+                            test_file, line_number, wrong_exception, correct_exception, do_replace=True
+                        )
+                    except Exception as e:
+                        cls.skip_file_lines.add(f"{file_name}:{line_number}")
+                        logger.error(f"Failed to fix never throw exception in {test_file} at line {line_number}: {e}")
                 else:
                     logger.error(f"Test file {file_name} does not exist.")
         if do_fix_flag:

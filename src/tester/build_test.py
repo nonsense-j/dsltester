@@ -392,6 +392,7 @@ class TestCompiler:
 
         fix_attempts = 0
         test_compile_status = False
+        TestEditor.init()
         while not test_compile_status:
             # Test compilation
             test_compile_status, error_map = self.compile_test_code()

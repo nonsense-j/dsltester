@@ -139,7 +139,7 @@ the checker reports it. Preserve the test's core scenario and main class name wh
 </checker_dsl>
 
 ### Test Cases should be reported by the checker but not
-{wrapped_alerting_tests}
+{wrapped_tests}
 
 First, carefully analyze the provided test cases and the checker DSL to identify why the tests are not reported. Then, output modified \
 test cases in the same order without detailed explanations, each wrapped in "<alerting_test>" and "</alerting_test>".
@@ -169,7 +169,7 @@ Preserve the test's core scenario and main class name while closing the gap betw
 </checker_dsl>
 
 ### Test Cases Incorrectly Reported by Checker
-{wrapped_non_alerting_tests}
+{wrapped_tests}
 
 First, carefully analyze the provided test cases and the checker DSL to identify why the tests are incorrectly reported. Then, output \
 modified test cases in the same order without detailed explanations, each wrapped in "<non_alerting_test>" and "</non_alerting_test>".

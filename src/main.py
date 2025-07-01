@@ -156,6 +156,9 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
     create_dir_with_path(tmp_ws_dsl_dir, cleanup=True)
     (tmp_ws_dsl_dir / f"DSL_ORI.kirin").write_text(checker_dsl, encoding="utf-8")
 
+    # clean up the tmp test dir if use_exist_tests is False
+    create_dir_with_path(tmp_ws_test_dir, cleanup=(not use_exist_tests))
+
     mismatch_max_retries = 1
     for mismatch_retry_time in range(mismatch_max_retries + 1):
         # generate compilable tests in the tmp test dir
@@ -185,12 +188,14 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
 
             if rearraged_test_info.get("mis_alerting", []):
                 mis_alerting_test_list = [t[1] for t in rearraged_test_info["mis_alerting"]]
-                refined_alerting_tests = refine_checker_tests(mis_alerting_test_list, checker_dsl, gen_type="alerting")
+                refined_alerting_tests = refine_checker_tests(
+                    mis_alerting_test_list, checker_dsl, refine_type="alerting"
+                )
                 refined_alerting_test_list.extend(refined_alerting_tests)
             if rearraged_test_info.get("mis_non_alerting", []):
                 mis_non_alerting_test_list = [t[1] for t in rearraged_test_info["mis_non_alerting"]]
                 refined_non_alerting_tests = refine_checker_tests(
-                    mis_non_alerting_test_list, checker_dsl, gen_type="non-alerting"
+                    mis_non_alerting_test_list, checker_dsl, refine_type="non-alerting"
                 )
                 refined_non_alerting_test_list.extend(refined_non_alerting_tests)
 
@@ -233,14 +238,15 @@ def gen_flow_regression(dsl_info: DslInfoDict, gen_flow_max_retries: int = 1):
     # validate with the all checker dsls and aggregated tests
     full_val_res = validate_tests(dsl_id, val_type="all")
 
-    # # scenario-coverage test augmentation
-    # failed_dsl_paths = collect_failed_dsl_paths(dsl_id, full_val_res)
-    # for failed_dsl_path in failed_dsl_paths:
-    #     failed_dsl = failed_dsl_path.read_text(encoding="utf-8")
-    #     logger.info(f"Augmenting tests for failed DSL: {failed_dsl_path}")
-    #     gen_flow_once(dsl_id, failed_dsl, gen_type="alerting", do_test_aug=True)
+    # scenario-coverage test augmentation
+    failed_dsl_paths = collect_failed_dsl_paths(dsl_id, full_val_res)
+    logger.info(f"Identified {len(failed_dsl_paths)} failed checker DSLs to augment tests.")
+    for i, failed_dsl_path in enumerate(failed_dsl_paths):
+        failed_dsl = failed_dsl_path.read_text(encoding="utf-8")
+        logger.info(f"Augmenting tests for [{i+1}/{len(failed_dsl_paths)}] failed DSL: {failed_dsl_path}")
+        gen_flow_once(dsl_id, failed_dsl, gen_type="alerting", use_exist_tests=False)
 
-    # full_val_res = validate_tests(dsl_id, val_type="all")
+    full_val_res = validate_tests(dsl_id, val_type="all")
     return full_val_res
 
 
