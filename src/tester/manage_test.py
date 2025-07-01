@@ -35,14 +35,14 @@ def update_main_class(test_case: str, class_name: str) -> str:
     :return: updated test case
     """
     # update the main public class name in the test case
-    pattern = r"public\s+(class)\s+\w+"
+    pattern = r"public.+class\s+(\w+)\s+{"
     # replace the class name with the new class name
     ori_class_name = re.search(pattern, test_case)
     if not ori_class_name:
         logger.error(f"--> No public main class found in the test case: {test_case}")
         return test_case
     else:
-        ori_class_name = ori_class_name.group(0)
+        ori_class_name = ori_class_name.group(1)
         new_test_case = test_case.replace(ori_class_name, class_name)
     return new_test_case
 
@@ -216,12 +216,14 @@ class TestManager:
         mis_non_alerting_count = 0
 
         for alerting_file in val_res["DSL_ORI"]["report"].keys():
+            # true alerting test cases
             if alerting_file.startswith("Alerting"):
                 alerting_test_code = (self.test_dir / "alert" / alerting_file).read_text(encoding="utf-8")
                 new_alerting_file = f"AlertingTest{len(true_alerting_test_info) + 1}.java"
                 true_alerting_test_info.append((Path(new_alerting_file).stem, alerting_test_code))
                 if alerting_file != new_alerting_file:
                     test_change_map[alerting_file] = new_alerting_file
+            # mismatch alerting test cases
             elif alerting_file.startswith("NonAlerting"):
                 alerting_test_code = (self.test_dir / "no-alert" / alerting_file).read_text(encoding="utf-8")
                 new_file_name = f"MisAlertingTest{len(mis_alerting_test_info)}.java"
@@ -232,12 +234,14 @@ class TestManager:
                 continue
 
         for non_alerting_file in val_res["DSL_ORI"]["pass"]:
+            # true non-alerting test cases
             if non_alerting_file.startswith("NonAlerting"):
                 non_alerting_test_code = (self.test_dir / "no-alert" / non_alerting_file).read_text(encoding="utf-8")
                 new_non_alerting_file = f"NonAlertingTest{len(true_non_alerting_test_info)}.java"
                 true_non_alerting_test_info.append((Path(new_non_alerting_file).stem, non_alerting_test_code))
                 if non_alerting_file != new_non_alerting_file:
                     test_change_map[non_alerting_file] = new_non_alerting_file
+            # mismatch non-alerting test cases
             elif non_alerting_file.startswith("Alerting"):
                 non_alerting_test_code = (self.test_dir / "alert" / non_alerting_file).read_text(encoding="utf-8")
                 new_file_name = f"MisNonAlertingTest{len(mis_non_alerting_test_info)}.java"
