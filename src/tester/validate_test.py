@@ -25,7 +25,7 @@ def validate_tests(dsl_id, val_type: str = "all") -> DslValResDict:
     lib_dir = cur_ws_dir / "lib"
     report_dir = cur_ws_dir / "report"
 
-    logger.info(f"==> Validating checker tests in {test_dir}")
+    logger.info(f"==> Validating checker tests in {cur_ws_dir} in {val_type} mode...")
     # execute kirin dsl (report dir will be automatically created in the test dir)
     if lib_dir.exists():
         KirinRunner.execute_kirin_dsl(dsl_dir, test_dir, report_dir, lib_dir)
@@ -118,7 +118,7 @@ def parse_xml_results(dsl_id, val_type: str = "all") -> dict[str, DslValResDict]
             del result["SecH_default_rule_name"]
 
     # checkers not reported in the XML file
-    checker_dir = Path(f"kirin_ws/{dsl_id}/dsl")
+    checker_dir = Path(f"kirin_ws/{dsl_id}/dsl") if val_type == "all" else Path(f"kirin_ws/{dsl_id}/tmp/dsl")
     # collect all .kirin file in checker_dir and its sub_dir recursively into the checker_list
     for checker_file in checker_dir.glob("**/*.kirin"):
         checker_name = checker_file.stem

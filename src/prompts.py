@@ -27,7 +27,8 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use undefined or unimported symbols in the code. Never use implicit dependencies (e.g., "import *").
+Never use undefined or unimported symbols in the code. Never use implicit dependencies (e.g., "import *").\
+Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
 6. **Standardized Test Code**. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
@@ -63,7 +64,8 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use undefined or unimported symbols in the code. Never use implicit dependencies (e.g., "import *").
+Never use undefined or unimported symbols in the code. Never use implicit dependencies (e.g., "import *").\
+Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
 6. **Standardized Test Code**. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
@@ -97,7 +99,8 @@ targeted comments to highlight test purposes and distinctions between cases.
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Never use undefined or unimported symbols in the code. Never use implicit dependencies (e.g., "import *").
+Never use undefined symbols and implicit imports (e.g., "import *") in the code. \
+Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
 6. **Standardized Test Code**. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
