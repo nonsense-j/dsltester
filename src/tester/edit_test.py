@@ -28,60 +28,53 @@ class TestEditor:
         """
         Try fixing general compilation errors in test files using tree-sitter.
         :param error_map: A dictionary mapping file names to error messages.
-        :return: True if any unsupported exceptions were fixed, False otherwise.
+        :return: True if any unreported exceptions were fixed, False otherwise.
         """
         for file_name, error_msg in error_map.items():
-            # # get the error count since each error_msg endswith "x errors\s+" or "x error\s+"
-            # error_count_match = re.search(r"(\d+)\s+error[s]?\s*$", error_msg)
-            # error_count = int(error_count_match.group(1)) if error_count else 0
-            # if error_count == 0:
-            #     logger.info(f"No compilation errors in {file_name}, skip...")
-            #     continue
-            # check unsupported exception
-
             if f"{file_name}:{error_msg}" in cls.skip_file_lines:
                 logger.info(f"Skipping {file_name} due to previously fixed errors.")
                 continue
 
             do_fix_flag = False
-            unsupported_exception_match = re.search(
+            unreported_exception_match = re.search(
                 r"\w+\.java:(\d+): error: unreported (exception|error) (\w+); must be caught or declared to be thrown",
                 error_msg,
             )
-            if unsupported_exception_match:
-                line_number = int(unsupported_exception_match.group(1))
-                exception_name = unsupported_exception_match.group(3)
+            if unreported_exception_match:
+                line_number = int(unreported_exception_match.group(1))
+                exception_name = unreported_exception_match.group(3)
                 test_file = Path(file_name)
                 do_fix_flag = True
                 if test_file.exists():
                     try:
-                        cls.fix_unsupported_exception(test_file, line_number, exception=exception_name, do_replace=True)
+                        cls.fix_unreported_exception(test_file, line_number, exception=exception_name, do_replace=True)
                     except Exception as e:
                         cls.skip_file_lines.add(f"{file_name}:{line_number}")
-                        logger.error(f"Failed to fix unsupported exception in {test_file} at line {line_number}: {e}")
+                        logger.error(f"Failed to fix unreported exception in {test_file} at line {line_number}: {e}")
                 else:
                     logger.error(f"Test file {file_name} does not exist.")
 
-            never_throw_exception_match = re.search(
-                r"\w+\.java:(\d+): error: (exception|error) (\w+) is never thrown in body of corresponding try statement",
-                error_msg,
-            )
-            if never_throw_exception_match:
-                line_number = int(never_throw_exception_match.group(1))
-                wrong_exception = never_throw_exception_match.group(3)
-                test_file = Path(file_name)
-                do_fix_flag = True
-                if test_file.exists():
-                    try:
-                        correct_exception = "Exception" if wrong_exception.endswith("Exception") else "Error"
-                        cls.fix_never_throw_exception(
-                            test_file, line_number, wrong_exception, correct_exception, do_replace=True
-                        )
-                    except Exception as e:
-                        cls.skip_file_lines.add(f"{file_name}:{line_number}")
-                        logger.error(f"Failed to fix never throw exception in {test_file} at line {line_number}: {e}")
-                else:
-                    logger.error(f"Test file {file_name} does not exist.")
+            # [INFO] Do not fix for never throw exception for now, since it may cause checking logic change.
+            # never_throw_exception_match = re.search(
+            #     r"\w+\.java:(\d+): error: (exception|error) (\w+) is never thrown in body of corresponding try statement",
+            #     error_msg,
+            # )
+            # if never_throw_exception_match:
+            #     line_number = int(never_throw_exception_match.group(1))
+            #     wrong_exception = never_throw_exception_match.group(3)
+            #     test_file = Path(file_name)
+            #     do_fix_flag = True
+            #     if test_file.exists():
+            #         try:
+            #             correct_exception = "Exception" if wrong_exception.endswith("Exception") else "Error"
+            #             cls.fix_never_throw_exception(
+            #                 test_file, line_number, wrong_exception, correct_exception, do_replace=True
+            #             )
+            #         except Exception as e:
+            #             cls.skip_file_lines.add(f"{file_name}:{line_number}")
+            #             logger.error(f"Failed to fix never throw exception in {test_file} at line {line_number}: {e}")
+            #     else:
+            #         logger.error(f"Test file {file_name} does not exist.")
         if do_fix_flag:
             logger.info("Finish fixing general errors in test files.")
         else:
@@ -102,8 +95,6 @@ class TestEditor:
         code_lines[error_line_index] = new_error_line
         # update the code
         fixed_code = "\n".join(code_lines)
-        # update comments
-        fixed_code = re.sub(r"//.*", lambda m: m.group(0).replace(wrong_exception, correct_exception), fixed_code)
 
         if do_replace:
             with open(test_file, "w", encoding="utf-8") as f:
@@ -113,11 +104,9 @@ class TestEditor:
             )
 
     @classmethod
-    def fix_unsupported_exception(
-        cls, test_file: Path, error_line: int, exception="Exception", do_replace=False
-    ) -> str:
+    def fix_unreported_exception(cls, test_file: Path, error_line: int, exception="Exception", do_replace=False) -> str:
         """
-        Fix unsupported exception in the test file by adding "throws Exception" or "throws Error" to the method containing the error line,
+        Fix unreported exception in the test file by adding "throws Exception" or "throws Error" to the method containing the error line,
         also add the default exception to enclosing method that invoking the target method.
         :param test_file: Path to the test file.
         :param error_line: The line containing the compilation error. (starting from 1)
@@ -198,13 +187,11 @@ class TestEditor:
                 fixed_method_sig += f" throws {default_exception}"
             # replace the method code in the original code
             fixed_code = fixed_code.replace(method_sig, fixed_method_sig)
-            # update comments
-            fixed_code = re.sub(r"//.*", lambda m: m.group(0).replace(exception, default_exception), fixed_code)
 
         if do_replace:
             test_file.write_text(fixed_code, encoding="utf-8")
             logger.info(
-                f"Fixed unsupported exception in {test_file} at line {error_line} for {len(edit_method_nodes)} methods."
+                f"Fixed unreported exception in {test_file} at line {error_line} for {len(edit_method_nodes)} methods."
             )
 
         return fixed_code

@@ -42,13 +42,13 @@ to highlight the specific checking scenario it covers. Never mention the test in
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
 Step 2. **Generate Tests**. Output each alerting test wrapped in "<alerting_test>" and "</alerting_test>", and each non-alerting test wrapped in \
-"<non_alerting_test>" and "</non_alerting_test>". 
+"<non_alerting_test>" and "</non_alerting_test>". Never use "```java".
 
 ### Your Task
 ### Checker DSL
-```dsl
+<checker_dsl>
 {checker_dsl}
-```
+</checker_dsl>
 ### Output Tests
 """
 
@@ -85,13 +85,13 @@ Never mention the test index in any comment.
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
-Step 2. **Generate Alerting Tests**. Output each alerting test wrapped in "<alerting_test>" and "</alerting_test>".
+Step 2. **Generate Alerting Tests**. Output each alerting test wrapped in "<alerting_test>" and "</alerting_test>". Never use "```java".
 
 ### Your Task
 ### Checker DSL
-```dsl
+<checker_dsl>
 {checker_dsl}
-```
+</checker_dsl>
 ### Output Alerting Tests
 """
 
@@ -127,13 +127,13 @@ Never mention the test index in any comment.
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
-Step 2. **Generate Non-alerting Tests**. Output each non-alerting test wrapped in "<non_alerting_test>" and "</non_alerting_test>". 
+Step 2. **Generate Non-alerting Tests**. Output each non-alerting test wrapped in "<non_alerting_test>" and "</non_alerting_test>". Never use "```java".
 
 ### Your Task
 ### Checker DSL
-```dsl
+<checker_dsl
 {checker_dsl}
-```
+</checker_dsl
 ### Output Non-Alerting Tests
 """
 
@@ -274,8 +274,8 @@ fix should still follow these requirements.
 
 ### Input and Output Format
 For both input and output, each checker test is wrapped in "<java_file>" and "</java_file>" and each library code is wrapped in \
-"<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Output all the fixed tests (in the same order as input) \
-and library code wrapped in the correct format. Unchanged library code should also be output as they are.
+"<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Output all the fixed tests (must in the same order as input) \
+and library code wrapped in the correct format. Unchanged input code files must also be output as they are.
 
 ### Input
 - Checker test files:
@@ -293,6 +293,8 @@ and library code wrapped in the correct format. Unchanged library code should al
 </checker_dsl>
 
 ### Output
+For each test, first fully understand the checking scenario it covers, then analyze the compilation errors and fix the test without changing \
+its scenario and the original alerting/non-alerting logic. 
 """
 
 PROMPTS[
@@ -335,4 +337,6 @@ Output all the fixed code files (in the same order as input) and library code (i
 </checker_dsl>
 
 ### Output
+For each test, first fully understand the checking scenario it covers, then analyze the compilation errors and fix the test without changing \
+its scenario and the original alerting/non-alerting logic. 
 """

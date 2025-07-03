@@ -201,7 +201,7 @@ def refine_checker_tests(
     user_prompt = PROMPTS[prompt_map[refine_type]].format(
         checker_dsl=checker_dsl,
         wrapped_tests="\n\n".join(
-            [f"```<{test_wrapper}>\n{test_code}\n</{test_wrapper}>" for test_code in mismatch_test_list]
+            [f"<{test_wrapper}>\n{test_code}\n</{test_wrapper}>" for test_code in mismatch_test_list]
         ),
     )
 

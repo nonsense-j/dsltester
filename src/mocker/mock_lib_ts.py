@@ -143,9 +143,11 @@ class JavaDependencyParser:
                         # only override method has modifier
                         method_str = f"{method_sig['modifier']} {method_type} {method_name}({args_full_str})"
                     elif method_sig["is_static"]:
-                        method_str = f"public static {method_type} {method_name}({args_full_str})"
+                        method_str = (
+                            f"public static {method_type} {method_name}({args_full_str}) throws RuntimeException"
+                        )
                     else:
-                        method_str = f"public {method_type} {method_name}({args_full_str})"
+                        method_str = f"public {method_type} {method_name}({args_full_str}) throws RuntimeException"
                     if method_type == "void":
                         method_str += " {\n\t\t// pass\n\t}"
                     else:

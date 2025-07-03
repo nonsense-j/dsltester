@@ -226,7 +226,7 @@ class TestManager:
             # mismatch alerting test cases
             elif alerting_file.startswith("NonAlerting"):
                 alerting_test_code = (self.test_dir / "no-alert" / alerting_file).read_text(encoding="utf-8")
-                new_file_name = f"MisAlertingTest{len(mis_alerting_test_info)}.java"
+                new_file_name = f"MisAlertingTest{len(mis_alerting_test_info) + 1}.java"
                 test_change_map[alerting_file] = new_file_name
                 mis_alerting_test_info.append((Path(new_file_name).stem, alerting_test_code))
                 mis_alerting_count += 1
@@ -237,14 +237,14 @@ class TestManager:
             # true non-alerting test cases
             if non_alerting_file.startswith("NonAlerting"):
                 non_alerting_test_code = (self.test_dir / "no-alert" / non_alerting_file).read_text(encoding="utf-8")
-                new_non_alerting_file = f"NonAlertingTest{len(true_non_alerting_test_info)}.java"
+                new_non_alerting_file = f"NonAlertingTest{len(true_non_alerting_test_info) + 1}.java"
                 true_non_alerting_test_info.append((Path(new_non_alerting_file).stem, non_alerting_test_code))
                 if non_alerting_file != new_non_alerting_file:
                     test_change_map[non_alerting_file] = new_non_alerting_file
             # mismatch non-alerting test cases
             elif non_alerting_file.startswith("Alerting"):
                 non_alerting_test_code = (self.test_dir / "alert" / non_alerting_file).read_text(encoding="utf-8")
-                new_file_name = f"MisNonAlertingTest{len(mis_non_alerting_test_info)}.java"
+                new_file_name = f"MisNonAlertingTest{len(mis_non_alerting_test_info) + 1}.java"
                 mis_non_alerting_test_info.append((Path(new_file_name).stem, non_alerting_test_code))
                 test_change_map[non_alerting_file] = new_file_name
                 mis_non_alerting_count += 1
