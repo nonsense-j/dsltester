@@ -43,10 +43,10 @@ class MockLibGenLLM:
         logger.info(f"Generating mock lib for {len(self.test_filepaths)} tests in {self.test_dir} using LLM...")
 
         # construct the user prompt
-        additional_info = ""
+        potential_libs = ""
         if self.potential_third_fqns:
-            additional_info = f"""### Potential Third-party Classes\n{", ".join(self.potential_third_fqns)}\n\n"""
-        prompt = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code, additional_info=additional_info)
+            potential_libs = f"""### Potential Third-party Classes\n{", ".join(self.potential_third_fqns)}"""
+        prompt = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code, potential_libs=potential_libs)
 
         for attempts in range(retry_max_attempts + 1):
             if attempts > 0:
@@ -76,7 +76,7 @@ class MockLibGenLLM:
         :return: {"{class_fqn}": "{mock_code}"}
         """
         # construct the messages
-        gen_mock_in = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code, additional_info="")
+        gen_mock_in = PROMPTS["gen_mock_lib_code"].format(code_snippets=self.all_test_code, potential_libs="")
         gen_mock_out = ""
         for class_fqn, lib_code in lib_res_dict.items():
             gen_mock_out += f"<lib-{class_fqn}>\n{lib_code}\n</lib-{class_fqn}>\n"

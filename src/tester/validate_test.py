@@ -22,7 +22,7 @@ def validate_tests(dsl_id, val_type: str = "all") -> DslValResDict:
 
     dsl_dir = cur_ws_dir / "dsl"
     test_dir = cur_ws_dir / "test"
-    lib_dir = cur_ws_dir / "lib"
+    lib_dir = Path(f"kirin_ws/{dsl_id}") / "lib"
     report_dir = cur_ws_dir / "report"
 
     logger.info(f"==> Validating checker tests in {cur_ws_dir} in {val_type} mode...")

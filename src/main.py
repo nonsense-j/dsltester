@@ -143,7 +143,7 @@ def gen_compilable_tests(dsl_id: str, checker_dsl: str, gen_type: str = "all", u
     if not test_compile_status:
         compile_fail_ratio = len(test_compiler.failed_tests) / test_count if test_count > 0 else 1
         move_non_compilable_tests(test_compiler.failed_tests, dsl_ws / "test-fail")
-        if compile_fail_ratio > COMPILATION_FAIL_THRESHOLD:
+        if compile_fail_ratio >= COMPILATION_FAIL_THRESHOLD:
             logger.warning(
                 f"Compile fail ratio {compile_fail_ratio:.2f} is too high, consider regenerating test cases."
             )
@@ -170,7 +170,8 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
     create_dir_with_path(tmp_ws_test_dir, cleanup=(not use_exist_tests))
 
     mismatch_max_retries = 1
-    for mismatch_retry_time in range(mismatch_max_retries + 1):
+    gen_flow_status = False
+    while not gen_flow_status:
         # generate compilable tests in the tmp test dir
         gen_compile_status = gen_compilable_tests(dsl_id, checker_dsl, gen_type, use_exist_tests)
         if not gen_compile_status:
@@ -188,7 +189,19 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
             rearraged_test_info.get("mis_non_alerting", [])
         )
         mismatch_ratio = mismatch_test_count / test_count if test_count > 0 else 1
-        if mismatch_ratio > MISMATCH_THRESHOLD:
+
+        mismatch_type_flag = False  # no alerts or no non-alerts but needed in gen_type
+        if gen_type == "all" or gen_type == "alerting":
+            mismatch_type_flag = mismatch_type_flag or len(rearraged_test_info.get("alerting", [])) == 0
+        if gen_type == "all" or gen_type == "non-alerting":
+            mismatch_type_flag = mismatch_type_flag or len(rearraged_test_info.get("non_alerting", [])) == 0
+
+        if mismatch_ratio >= MISMATCH_THRESHOLD or mismatch_type_flag:
+            mismatch_max_retries -= 1
+            if mismatch_max_retries < 0:
+                logger.warning(f"Mismatch ratio {mismatch_ratio:.2f} is too high, but max retries reached, stopping...")
+                return False
+
             logger.warning(f"Mismatch ratio {mismatch_ratio:.2f} is too high, try refining test cases...")
             # clean up the tmp test dir
             create_dir_with_path(tmp_ws_test_dir, cleanup=True)
@@ -197,15 +210,15 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
             refined_non_alerting_test_list = [t[1] for t in rearraged_test_info.get("non_alerting", [])]
 
             if rearraged_test_info.get("mis_non_alerting", []):
-                mis_alerting_test_list = [t[1] for t in rearraged_test_info["mis_alerting"]]
+                mis_non_alerting_test_list = [t[1] for t in rearraged_test_info["mis_non_alerting"]]
                 refined_alerting_tests = refine_checker_tests(
-                    mis_alerting_test_list, checker_dsl, refine_type="alerting"
+                    mis_non_alerting_test_list, checker_dsl, refine_type="alerting"
                 )
                 refined_alerting_test_list.extend(refined_alerting_tests)
             if rearraged_test_info.get("mis_alerting", []):
-                mis_non_alerting_test_list = [t[1] for t in rearraged_test_info["mis_non_alerting"]]
+                mis_alerting_test_list = [t[1] for t in rearraged_test_info["mis_alerting"]]
                 refined_non_alerting_tests = refine_checker_tests(
-                    mis_non_alerting_test_list, checker_dsl, refine_type="non-alerting"
+                    mis_alerting_test_list, checker_dsl, refine_type="non-alerting"
                 )
                 refined_non_alerting_test_list.extend(refined_non_alerting_tests)
 
@@ -220,10 +233,9 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
             # saving tests to the final test directory and clear tmp test dir
             dsl_ws_test_dir = dsl_ws / "test"
             tmp_test_manager.append_test_info(rearraged_test_info, target_test_dir=dsl_ws_test_dir)
-            shutil.rmtree(tmp_ws_dir)
-            return True
-
-    return False
+            # shutil.rmtree(tmp_ws_dir)
+            gen_flow_status = True
+    return gen_flow_status
 
 
 def gen_flow_regression(dsl_info: DslInfoDict, gen_flow_max_retries: int = 1):
@@ -246,17 +258,16 @@ def gen_flow_regression(dsl_info: DslInfoDict, gen_flow_max_retries: int = 1):
             gen_flow_max_retries -= 1
 
     # validate with the all checker dsls and aggregated tests
-    full_val_res = validate_tests(dsl_id, val_type="all")
+    full_val_res = validate_tests(dsl_id, val_type="tmp")
 
     # scenario-coverage test augmentation
-    failed_dsl_paths = collect_failed_dsl_paths(dsl_id, full_val_res)
-    logger.info(f"Identified {len(failed_dsl_paths)} failed checker DSLs to augment tests.")
-    for i, failed_dsl_path in enumerate(failed_dsl_paths):
-        failed_dsl = failed_dsl_path.read_text(encoding="utf-8")
-        logger.info(f"Augmenting tests for [{i+1}/{len(failed_dsl_paths)}] failed DSL: {failed_dsl_path}")
-        gen_flow_once(dsl_id, failed_dsl, gen_type="alerting", use_exist_tests=False)
-
-    full_val_res = validate_tests(dsl_id, val_type="all")
+    # failed_dsl_paths = collect_failed_dsl_paths(dsl_id, full_val_res)
+    # logger.info(f"Identified {len(failed_dsl_paths)} failed checker DSLs to augment tests.")
+    # for i, failed_dsl_path in enumerate(failed_dsl_paths):
+    #     failed_dsl = failed_dsl_path.read_text(encoding="utf-8")
+    #     logger.info(f"Augmenting tests for [{i+1}/{len(failed_dsl_paths)}] failed DSL: {failed_dsl_path}")
+    #     gen_flow_once(dsl_id, failed_dsl, gen_type="alerting", use_exist_tests=False)
+    # full_val_res = validate_tests(dsl_id, val_type="all")
     return full_val_res
 
 
@@ -281,6 +292,10 @@ def main():
         logger.info(f"====== Processing DSL #{i + 1}/{len(dsl_info_list)} ======")
         # initialize the DSL workspace and set log file for each dsl
         dsl_id = dsl_info["id"]
+        # if (kirin_ws_dir / dsl_id).is_dir():
+        #     logger.info(f"Found existing DSL workspace for {dsl_id}, skip...")
+        #     continue
+
         initialize_dsl_ws(dsl_info)
         set_log_file(kirin_ws_dir / dsl_id / f"run.log")
 

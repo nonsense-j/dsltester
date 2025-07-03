@@ -97,13 +97,13 @@ def extract_checker_tests(llm_output: str, gen_type: str) -> tuple[list[str], li
         "alerting",
         "non-alerting",
     ], f"Invalid gen_test type: {gen_type}, should be one of ['all', 'alerting', 'non-alerting']"
-    alert_pattern = r"<alerting_java_file>\s*(.*?)\s*</alerting_java_file>"
+    alert_pattern = r"<alerting_test>\s*(.*?)\s*</alerting_test>"
     alerting_test_list = re.findall(alert_pattern, llm_output, re.DOTALL)
     alerting_test_list = [test_case for test_case in alerting_test_list if test_case.strip() != ""]
     if alerting_test_list:
         alerting_test_list = fix_syntax_error(alerting_test_list)
 
-    non_alert_pattern = r"<non_alerting_java_file>\s*(.*?)\s*</non_alerting_java_file>"
+    non_alert_pattern = r"<non_alerting_test>\s*(.*?)\s*</non_alerting_test>"
     non_alerting_test_list = re.findall(non_alert_pattern, llm_output, re.DOTALL)
     non_alerting_test_list = [test_case for test_case in non_alerting_test_list if test_case.strip() != ""]
     if non_alerting_test_list:
@@ -115,7 +115,7 @@ def extract_checker_tests(llm_output: str, gen_type: str) -> tuple[list[str], li
 def gen_checker_tests(
     checker_dsl: str,
     gen_type: str = "all",
-    add_info: bool = False,
+    add_info: bool = True,
     retry_max_attempts: int = 1,
 ) -> tuple[list[str], list[str]]:
     """
@@ -220,4 +220,7 @@ def refine_checker_tests(
         refined_test_list = re.findall(pattern, llm_response, re.DOTALL)
         refined_test_list = [test_case for test_case in refined_test_list if test_case.strip() != ""]
 
-    return refined_test_list
+        if refined_test_list:
+            return refined_test_list
+
+    return []
