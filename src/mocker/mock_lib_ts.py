@@ -277,9 +277,17 @@ class JavaDependencyParser:
             # get the argument types
             args_node = node.child_by_field_name("parameters")
             arg_types = []
-            for i in range(args_node.named_child_count):
-                arg_node = args_node.named_child(i)
-                arg_type = arg_node.child_by_field_name("type").text.decode("utf-8")
+            for arg_node in args_node.named_children:
+                arg_type = "Object"
+                arg_type_node = arg_node.child_by_field_name("type")
+                if arg_type_node is not None:
+                    arg_type = arg_type_node.text.decode("utf-8")
+                else:
+                    if arg_node.type == "spread_parameter":
+                        for child in arg_node.named_children:
+                            if "type" in child.type:
+                                arg_type = child.text.decode("utf-8") + "..."
+                                break
                 arg_types.append(arg_type)
             self.method_decl_map[method_name] = (arg_types, ret_type)
 

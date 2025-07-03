@@ -22,27 +22,26 @@ Given a code checker written in the DSL format, please generate comprehensive an
 Strictly adhere to these rules when creating test cases:
 1. **All Tests**. Alerting tests must contain checker-matching code patterns and can be reported by the checker, while non-alerting tests must not contain such patterns. \
 Both types of tests should be generated with minimal overlapping logic.
-2. **Checking Scenario Coverage**. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
-across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). For each test case, add clear, \
-targeted comments to highlight test purposes and distinctions between cases. 
+2. **Checking Scenario Coverage**. Tests must cover all checking scenarios of the checker with minimal overlapping logic. Specifically, simplify regex coverage \
+(e.g., use 1-2 options from "(a|b|c|d)"). Each test must correspond to a single scenario and ensure no duplicate scenarios across tests.
 3. **Minimal Code Structure**. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
-Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
+Throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Correct imports**. Every used symbol must either be defined in the code or correctly imported. For third-party classes or annotations, \
 you must correctly import them with fully qualified names or directly use them in the fully qualified form. \
 Strictly import each symbol (class or annotation) individually instead of using "import *". 
-6. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
-use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
-7. **Standardized Test Code**. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
-which uses exact class naming "AlertingTest{{i}}" and "NonAlertingTest{{j}}" where {{i}} refers to the index of alerting tests and {{j}} for the non-alerting tests, \
-both starting from 1.
+6. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly \
+must use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
+7. **Standardized Test Code**. Each test must have only one main public class, named as "AlertingTest{{i}}" or "NonAlertingTest{{j}}" where {{i}} \
+refers to the index of alerting tests and {{j}} for the non-alerting tests, both starting from 1. For each test, add clear and targeted comments \
+to highlight the specific checking scenario it covers. Never mention the test index in any comment.
 
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
-Step 2. **Generate Tests**. Output alerting tests wrapped in "<alerting_test>" and "</alerting_test>", and non-alerting tests wrapped in \
+Step 2. **Generate Tests**. Output each alerting test wrapped in "<alerting_test>" and "</alerting_test>", and each non-alerting test wrapped in \
 "<non_alerting_test>" and "</non_alerting_test>". 
 
 ### Your Task
@@ -67,27 +66,26 @@ Strictly adhere to these rules when creating test cases:
 1. **Checker-Reportable Tests**. Ensure every test case contains checker-matching code patterns to guarantee reportability. \
 Never generate test cases that pass silently—only those explicitly reported by the checker. Notely, prioritize checker requirements \
 over rule descriptions (if provided), where the rule often describes suggested proper behaviors while the checker reports improper ones. \
-2. **Checking Scenario Coverage**. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
-across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). For each test case, add clear, \
-targeted comments to highlight test purposes and distinctions between cases. 
+2. **Checking Scenario Coverage**. Tests must cover all checking scenarios of the checker with minimal overlapping logic. Specifically, simplify regex coverage \
+(e.g., use 1-2 options from "(a|b|c|d)"). Each test must correspond to a single scenario and ensure no duplicate scenarios across tests.
 3. **Minimal Code Structure**. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
 Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
-5. **Correct imports**. Every used symbol must either be defined in the code or correctly imported. For third-party classes or annotations, \
+5. **Correct Imports**. Every used symbol must either be defined in the code or correctly imported. For third-party classes or annotations, \
 you must correctly import them with fully qualified names or directly use them in the fully qualified form. \
 Strictly import each symbol (class or annotation) individually instead of using "import *". 
 6. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
-7. **Standardized Test Code**. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
-which uses exact class naming "AlertingTest{{i}}" and "NonAlertingTest{{j}}" where {{i}} refers to the index of alerting tests and {{j}} for the non-alerting tests, \
-both starting from 1.
+7. **Standardized Test Code**. Each test only have one main public class, named as "AlertingTest{{i}}" where {{i}} refers to the index of \
+alerting tests, starting from 1. For each test, add clear and targeted comments to highlight the specific checking scenario it covers. \
+Never mention the test index in any comment.
 
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
-Step 2. **Generate Alerting Tests**. Output alerting tests wrapped in "<alerting_test>" and "</alerting_test>".
+Step 2. **Generate Alerting Tests**. Output each alerting test wrapped in "<alerting_test>" and "</alerting_test>".
 
 ### Your Task
 ### Checker DSL
@@ -110,27 +108,26 @@ Given a code checker written in the DSL format, please generate comprehensive an
 Strictly adhere to these rules when creating test cases:
 1. **Checker-Passing Tests**. Ensure every test case doesn't contain checker-matching code patterns to guarantee that it will not be reported by the checker. \
 I only care about these non-alerting test cases, which are often compliant examples for the inherent rule of the checker.
-2. **Checking Scenario Coverage**. Tests must cover all mandatory scenarios of the checker with minimal overlapping logic. Ensure no duplicate scenarios \
-across test cases. Specifically, simplify regex variations (e.g., use 1-2 options from "(a|b|c|d)"). For each test case, add clear, \
-targeted comments to highlight test purposes and distinctions between cases. 
+2. **Checking Scenario Coverage**. Tests must cover all checking scenarios of the checker with minimal overlapping logic. Specifically, simplify regex coverage \
+(e.g., use 1-2 options from "(a|b|c|d)"). Each test must correspond to a single scenario and ensure no duplicate scenarios across tests.
 3. **Minimal Code Structure**. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
 4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
 Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
-5. **Correct imports**. Every used symbol must either be defined in the code or correctly imported. For third-party classes or annotations, \
+5. **Correct Imports**. Every used symbol must either be defined in the code or correctly imported. For third-party classes or annotations, \
 you must correctly import them with fully qualified names or directly use them in the fully qualified form. \
 Strictly import each symbol (class or annotation) individually instead of using "import *". 
 6. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
-7. **Standardized Test Code**. Do not mention the test index in any comment in the test case. The test index should only occur in the main public class name, \
-which uses exact class naming "AlertingTest{{i}}" and "NonAlertingTest{{j}}" where {{i}} refers to the index of alerting tests and {{j}} for the non-alerting tests, \
-both starting from 1.
+7. **Standardized Test Code**. Each test only have one main public class, named as "NonAlertingTest{{i}}" where {{i}} refers to the index of \
+non-alerting tests, starting from 1. For each test, add clear and targeted comments to highlight the specific checking scenario it covers. \
+Never mention the test index in any comment.
 
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
-Step 2. **Generate Non-alerting Tests**. Output non-alerting tests wrapped in "<non_alerting_test>" and "</non_alerting_test>". 
+Step 2. **Generate Non-alerting Tests**. Output each non-alerting test wrapped in "<non_alerting_test>" and "</non_alerting_test>". 
 
 ### Your Task
 ### Checker DSL
@@ -151,18 +148,19 @@ the checker reports it. Preserve the test's core scenario and main class name wh
 1. **Trigger Checker Reporting**  
    - Analyze why the original test wasn't reported by comparing the DSL's violation patterns with test code
    - Make surgical changes ONLY where needed to match checker's detection logic
-
-2. **Preserve Original Structure**  
+2. **Preserve Core Identity**  
    - Keep main class name identical (e.g., `AlertingTest1` remains unchanged)
    - Retain existing imports and core logic flow
    - The modified test must still be a complete Java file that can compile successfully
+   - Retain or refine comments to highlight the specific checking scenario for each test and never mention the test index in any comment
 
+   
 ### Checker DSL
 <checker_dsl>
 {checker_dsl}
 </checker_dsl>
 
-### Test Cases should be reported by the checker but not
+### Test Cases Should be Reported by the Checker but not
 {wrapped_tests}
 
 First, carefully analyze the provided test cases and the checker DSL to identify why the tests are not reported. Then, output modified \
@@ -181,18 +179,18 @@ Preserve the test's core scenario and main class name while closing the gap betw
    - Analyze why the original test was reported by comparing the DSL's violation patterns with test code
    - Make surgical changes ONLY where needed to avoid matching checker's detection logic
    - Ensure modifications preserve the test's original valid behavior
-
 2. **Preserve Core Identity**  
    - Maintain identical main class names (e.g., `NonAlertingTest1` unchanged)
    - Retain existing imports and primary logic flow
    - All modifications must yield compilable Java files
+   - Retain or refine comments to highlight the specific checking scenario for each test and never mention the test index in any comment
 
 ### Checker DSL
 <checker_dsl>
 {checker_dsl}
 </checker_dsl>
 
-### Test Cases Incorrectly Reported by Checker
+### Test Cases Unexpectedly Reported by Checker
 {wrapped_tests}
 
 First, carefully analyze the provided test cases and the checker DSL to identify why the tests are incorrectly reported. Then, output \
@@ -230,7 +228,7 @@ PROMPTS[
 ## General Goal
 You are an expert in Java programming and code analysis. I will provide you with a list of Java codes each wrapped in "```java" and "```". \
 Each code is the content of a complete Java file containing syntax errors, and you need to fix these errors in them without changing the \
-identifier names, structure and behaviors in the code. Directly output the fixed code in the same order as the input, each wrapped in "```java" and "```".
+identifier names, comments, structure and behaviors in the code. Directly output the fixed code in the same order as the input, each wrapped in "```java" and "```".
 
 ### Input java code
 {wrapped_java_code}
@@ -263,10 +261,11 @@ You need to resolve these errors by modifying the test and the library code if n
 
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Analyze the failure cause for each test and fix all compilation errors while ignoring warnings. Since the error \
-message maybe incomplete, you also need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems.
+message maybe incomplete, you also need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems. \
+Never change the original comments unless breaking code changes are introduced.
 2. Never change the original alerting or non-alerting logic for each test. During fixing, you must ensure that the alerting tests \
 still contain checker-matching code patterns to guarantee reportability, while the non-alerting tests must not contain such patterns. \
-Checker reportability of a test can be inferred from both the original code comments and main class name (AlertingTest is designed to \
+The checking scenario of a test can be inferred from both the original code comments and main class name (AlertingTest is designed to \
 be reported while NonAlertingTest is expected be non-alerting).
 3. Library Code Requirements. Each library code is just a mock code for test compilation with minimal logic. Always use minimum method bodies, default return \
 and field values (e.g., null, 0, false, '', etc.). Always using **Object** as argument/return/field types if possible to minimize nested dependencies. library code \
@@ -307,10 +306,11 @@ compilation errors with the error message will be raised. You need to resolve th
 
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Analyze the failure cause for each test and fix all compilation errors while ignoring warnings. Since the error \
-message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems.
+message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems. \
+Never change the original comments unless breaking code changes are introduced.
 2. Never change the original alerting or non-alerting logic for each test. During fixing, you must ensure that the alerting tests \
 still contain checker-matching code patterns to guarantee reportability, while the non-alerting tests must not contain such patterns. \
-Checker reportability of a test can be inferred from both the original code comments and main class name (AlertingTest is designed to \
+The checking scenario of a test can be inferred from both the original code comments and main class name (AlertingTest is designed to \
 be reported while NonAlertingTest is expected be non-alerting).
 3. Library Code Requirements. If you add import statements or use third-party dependencies with fully qualified names, you must also provide mock library code \
 for them. Each mock library code is uesd for test compilation with minimal logic. Always use minimum method bodies, default return \
