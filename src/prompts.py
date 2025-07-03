@@ -274,8 +274,8 @@ fix should still follow these requirements.
 
 ### Input and Output Format
 For both input and output, each checker test is wrapped in "<java_file>" and "</java_file>" and each library code is wrapped in \
-"<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Output all the fixed tests (must in the same order as input) \
-and library code wrapped in the correct format. Unchanged input code files must also be output as they are.
+"<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Output all the fixed tests (must in the same order with the same number as input) \
+and library code (each must still be a complete file with unchanged code) wrapped in the correct format. 
 
 ### Input
 - Checker test files:
@@ -322,7 +322,8 @@ and field values (e.g., null, 0, false, '', etc.). Always using **Object** as ar
 ### Input and Output Format
 For both input and output, each Java code file is wrapped in "<java_file>" and "</java_file>". If you add any third-party dependencies as imports, \
 the library code should also be output, each wrapped in "<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". \
-Output all the fixed code files (in the same order as input) and library code (if necessary) wrapped in the correct format.
+Output all the fixed code files (must in the same order with the same number as input) and library code (if necessary, each must be a complete \
+file with lib code) wrapped in the correct format.
 
 ### Input
 - Checker test files:

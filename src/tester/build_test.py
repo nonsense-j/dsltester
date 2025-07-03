@@ -258,15 +258,14 @@ class TestCompiler:
             full_error_msg += error_map[test_file] + "\n"
         wrapped_java_code = wrapped_java_code.rstrip()
         full_error_msg = full_error_msg.rstrip()
+        lib_res_ori = dict()
 
         # check if dependency lib is needed
         if self.need_third_party_lib:
             wrapped_lib_code = ""
-            for lib_file in self.mock_tmp_dir.rglob("*.java"):
-                lib_file_path = Path(lib_file)
-                fqn = lib_file_path.relative_to(self.mock_tmp_dir).as_posix().replace("/", ".").replace(".java", "")
-                wrapped_lib_code += f"<lib-{fqn}>\n{lib_file_path.read_text(encoding='utf-8')}\n</lib-{fqn}>\n"
-
+            lib_res_ori = self.get_local_lib_code()
+            for fqn in lib_res_ori:
+                wrapped_lib_code += f"<lib-{fqn}>\n{lib_res_ori[fqn]}\n</lib-{fqn}>\n"
             query_type = "fix_test_compile_with_lib"
             user_prompt = PROMPTS[query_type].format(
                 checker_dsl=self.checker_dsl,
@@ -291,7 +290,14 @@ class TestCompiler:
                 )
             # query the LLM
             llm_result = LLMWrapper.query_llm(user_prompt, query_type=query_type)
+
+            # extract lib res
             lib_res = parse_lib_code(llm_result)
+            for fqn_ori in lib_res_ori:
+                if fqn_ori not in lib_res:
+                    logger.info(f"LLM did not return lib code for {fqn_ori}, using existed {fqn_ori}.")
+                    lib_res[fqn_ori] = lib_res_ori[fqn_ori]
+
             pattern = r"<java_file>\s*(.*?)\s*</java_file>"
             test_case_list = re.findall(pattern, llm_result, re.DOTALL)
             test_case_list = [test_case for test_case in test_case_list if test_case.strip() != ""]
