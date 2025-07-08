@@ -43,6 +43,11 @@ class FieldSignature(TypedDict):
     type: str
 
 
+class AnnotationSignature(TypedDict):
+    name: str
+    arg_type_map: dict[str, str]  # arg_name -> arg_type
+
+
 class ConstructorSignature(TypedDict):
     arg_type_list: list[str]
 
@@ -116,6 +121,21 @@ class JavaDependencyParser:
             class_body = ""
             if class_fqn in self.usage_info:
                 usage = self.usage_info[class_fqn]
+                # check if annotation
+                ann_sig = usage.get("annotation", None)
+                if ann_sig:
+                    package_name, _ = class_fqn.rsplit(".", 1)
+                    lib_code = f"package {package_name};\n\n"
+                    lib_code += f"public @interface {ann_sig['name']} {{\n"
+                    for arg_name, arg_type in ann_sig["arg_type_map"].items():
+                        if arg_type in PREMITIVE_TYPE_DEFAULT:
+                            default_value = PREMITIVE_TYPE_DEFAULT[arg_type]
+                            class_body += f"\t{arg_type} {arg_name}() default {default_value};\n"
+                        else:
+                            class_body += f"\tObject {arg_name}() default null;\n"
+                    lib_code += f"{class_body.rstrip()}\n}}\n"
+                    res[class_fqn] = lib_code
+                    continue
                 # add fields
                 field_sig_list = usage.get("fields", [])
                 for field_sig in field_sig_list:
@@ -349,6 +369,8 @@ class JavaDependencyParser:
                 self._process_method_call(child)
             elif child.type == "field_access":
                 self._process_field_access(child)
+            elif child.type == "annotation" or child.type == "marker_annotation":
+                self._process_annotation(child)
             # keep traversing
             self._visit_node(child)
 
@@ -421,6 +443,30 @@ class JavaDependencyParser:
             class_fqn = self.scoped_class_info[self.type_info[obj_name]]
             field_sig = self._construct_field_signature(field_access_node, is_static=False)
             self._collect_usage(class_fqn, field_sig, "field")
+
+    def _process_annotation(self, annotation_node):
+        """Process annotation nodes."""
+        ann_name_node = annotation_node.child_by_field_name("name")
+        if not ann_name_node:
+            return
+        ann_name = ann_name_node.text.decode("utf-8")
+        if ann_name in self.scoped_class_info:
+            class_fqn = self.scoped_class_info[ann_name]
+            ann_sig = AnnotationSignature(
+                name=class_fqn.split(".")[-1],
+                arg_type_map={},  # arg_name -> arg_type
+            )
+            args_node = annotation_node.child_by_field_name("arguments")
+            if args_node:
+                for arg_node in args_node.named_children:
+                    if arg_node.type == "element_value_pair":
+                        arg_key = arg_node.child_by_field_name("key").text.decode("utf-8")
+                        arg_type = self._get_arg_type(arg_node.child_by_field_name("value"))
+                    else:
+                        arg_key = "value"
+                        arg_type = self._get_arg_type(arg_node)
+                    ann_sig["arg_type_map"][arg_key] = arg_type
+            self._collect_usage(class_fqn, ann_sig, "annotation")
 
     def _get_builtin_type(self, node):
         """Get the built-in type of a node."""
@@ -598,17 +644,31 @@ class JavaDependencyParser:
     def _collect_usage(self, class_fqn, signature, usage_type):
         """
         Collect usage information.
-        usage_type: "constructor", "method" or "field"
+        usage_type: "constructor", "method", "field" or "annotation"
         """
-        assert usage_type in ["constructor", "method", "field"], f"Invalid usage type {usage_type}"
+        assert usage_type in ["constructor", "method", "field", "annotation"], f"Invalid usage type {usage_type}"
         if class_fqn not in self.usage_info:
             self.usage_info[class_fqn] = {"constructors": [], "methods": [], "fields": []}
         usage_key = f"{usage_type}s"
 
-        hash_list = [self._get_sig_hash(sig, usage_type) for sig in self.usage_info[class_fqn][usage_key]]
-        # check if the signature is already in the list
-        if not self._get_sig_hash(signature, usage_type) in hash_list:
-            self.usage_info[class_fqn][usage_key].append(signature)
+        if usage_type == "annotation":
+            saved_ann_sig = self.usage_info[class_fqn].get("annotation", None)
+            if saved_ann_sig:
+                for k in signature["arg_type_map"].keys():
+                    if k not in saved_ann_sig["arg_type_map"]:
+                        self.usage_info[class_fqn]["annotation"]["arg_type_map"][k] = signature["arg_type_map"][k]
+                    elif saved_ann_sig["arg_type_map"][k] != signature["arg_type_map"][k]:
+                        logger.error(
+                            f"Annotation {class_fqn} has different arg type for {k}, using the first: "
+                            f"{saved_ann_sig['arg_type_map'][k]} vs {signature['arg_type_map'][k]}"
+                        )
+            else:
+                self.usage_info[class_fqn]["annotation"] = signature
+        else:
+            # check if the signature is already collected
+            hash_list = [self._get_sig_hash(sig, usage_type) for sig in self.usage_info[class_fqn][usage_key]]
+            if not self._get_sig_hash(signature, usage_type) in hash_list:
+                self.usage_info[class_fqn][usage_key].append(signature)
 
     def _get_sig_hash(self, signature, usage_type):
         assert usage_type in ["constructor", "method", "field"], f"Invalid usage type {usage_type}"
@@ -662,7 +722,7 @@ class MockLibGenTS:
 
 if __name__ == "__main__":
     # test_with_example()
-    lib_mocker_ts = MockLibGenTS(Path("kirin_ws/test_tmp/test"))
+    lib_mocker_ts = MockLibGenTS(Path("kirin_ws/test_tmp/test/anno"))
     lib_res = lib_mocker_ts.gen_mock_lib_code_ts()
     print(f"==> Lib code generation result: ")
     for class_fqn, mock_code in lib_res.items():
