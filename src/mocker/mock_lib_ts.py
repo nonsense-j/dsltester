@@ -132,7 +132,10 @@ class JavaDependencyParser:
                             default_value = PREMITIVE_TYPE_DEFAULT[arg_type]
                             class_body += f"\t{arg_type} {arg_name}() default {default_value};\n"
                         else:
-                            class_body += f"\tObject {arg_name}() default null;\n"
+                            if arg_type.endswith("[]"):
+                                class_body += f"\t{arg_type} {arg_name}() default null;\n"
+                            else:
+                                class_body += f"\tObject {arg_name}() default null;\n"
                     lib_code += f"{class_body.rstrip()}\n}}\n"
                     res[class_fqn] = lib_code
                     continue
@@ -527,6 +530,8 @@ class JavaDependencyParser:
             method_name = node.child_by_field_name("name").text.decode("utf-8")
             if method_name in self.method_decl_map:
                 return self.method_decl_map[method_name][1]
+        elif type_ == "element_value_array_initializer":
+            return f"{self._get_arg_type(node.named_child(0))}[]"
 
         return "Object"
 

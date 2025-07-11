@@ -261,6 +261,9 @@ class TestManager:
             mis_non_alerting=mis_non_alerting_test_info,
         )
 
+        if not test_change_map:
+            return rearraged_test_info, json.loads(val_res)
+
         val_res_str = json.dumps(val_res)
         pattern = re.compile("|".join(re.escape(k) for k in sorted(test_change_map, key=len, reverse=True)))
         new_val_res_str = pattern.sub(lambda m: test_change_map[m.group(0)], val_res_str)
