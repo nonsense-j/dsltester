@@ -35,7 +35,7 @@ def update_main_class(test_case: str, class_name: str) -> str:
     :return: updated test case
     """
     # update the main public class name in the test case
-    pattern = r"public.+class\s+(\w+)\s+{"
+    pattern = r"public.+class\s+(\w+)\s+.*{"
     # replace the class name with the new class name
     ori_class_name = re.search(pattern, test_case)
     if not ori_class_name:
@@ -55,12 +55,12 @@ class TestManager:
         Test folder structure:
             kirin_ws/{dsl_id}/
                 ├── alert/
-                │   ├── AlertingTest1.java
-                │   ├── AlertingTest2.java
-                │   ├── MisAlertingTest1.java
+                │   ├── TruePosTest1.java
+                │   ├── TruePosTest2.java
+                │   ├── FalsePosTest1.java
                 ├── no-alert/
-                │   ├── NonAlertingTest1.java
-                │   ├── MisNonAlertingTest1.java
+                │   ├── TrueNegTest1.java
+                │   ├── FalseNegTest1.java
         """
         assert test_dir.is_dir(), f"--> Test directory {test_dir} not found!"
         logger.info(f"Initialize TestManager with test directory: {test_dir}")
@@ -68,92 +68,96 @@ class TestManager:
 
     def collect_local_start_ids(self, test_dir: Path = None) -> TestIdxDict:
         """
-        Collect the start ids for appending alerting, non-alerting, and mismatch tests from the test directory.
-        :return: TestIdxDict containing the start ids for alerting, non-alerting, and mismatch tests.
+        Collect the start ids for appending TP, TN, FP, FN tests.
+        :return: TestIdxDict containing the start ids for TP, TN, FP, FN tests.
         """
         if not test_dir:
             test_dir = self.test_dir
-        alerting_count = len(list(test_dir.glob("alert/AlertingTest*.java")))
-        mismatch_alert_count = len(list(test_dir.glob("alert/MisAlertingTest*.java")))
-        non_alerting_count = len(list(test_dir.glob("no-alert/NonAlertingTest*.java")))
-        mismatch_non_alerting_count = len(list(test_dir.glob("no-alert/MisNonAlertingTest*.java")))
-        logger.info(
-            f"Found existed tests: alerting({alerting_count}), non-alerting({non_alerting_count}), mis_alerting({mismatch_alert_count}), mis_non_alerting=({mismatch_non_alerting_count})"
-        )
+        TP_count = len(list(test_dir.glob("alert/TruePosTest*.java")))
+        TN_count = len(list(test_dir.glob("no-alert/TrueNegTest*.java")))
+        FP_count = len(list(test_dir.glob("alert/FalsePosTest*.java")))
+        FN_count = len(list(test_dir.glob("no-alert/FalseNegTest*.java")))
+        logger.info(f"Found existed tests: TP=({TP_count}), TN=({TN_count}), FP=({FP_count}), FN=({FN_count})")
 
         return TestIdxDict(
-            alerting_id=alerting_count + 1,
-            non_alerting_id=non_alerting_count + 1,
-            mis_alerting_id=mismatch_alert_count + 1,
-            mis_non_alerting_id=mismatch_non_alerting_count + 1,
+            TP_id=TP_count + 1,
+            TN_id=TN_count + 1,
+            FP_id=FP_count + 1,
+            FN_id=FN_count + 1,
         )
 
     def create_test_info(
         self,
-        alerting_test_list: list[str],
-        non_alerting_test_list: list[str],
-        mismatch_alerting_test_list: list[str] = [],
-        mismatch_non_alerting_test_list: list[str] = [],
+        pos_test_list: list[str],
+        neg_test_list: list[str],
+        false_pos_test_list: list[str] = [],
+        false_neg_test_list: list[str] = [],
         append_test_dir: Path = None,
+        is_rearranged: bool = False,
     ) -> TestInfoDict:
         """
-        create test info dict with alerting and non-alerting test cases.
-        If do_test_aug is True, tests will be named from 1.
-        If do_test_aug is False, tests will be named from the current count in the test directory.
-        :param alerting_test_list: list of alerting test cases
-        :param non_alerting_test_list: list of non-alerting test cases
-        :param mismatch_alerting_test_list: list of mismatch alerting test cases
-        :param mismatch_non_alerting_test_list: list of mismatch non-alerting test cases
+        create test info dict with positive and negative test cases.
+        :param pos_test_list: list of alerting test cases
+        :param neg_test_list: list of non-alerting test cases
+        :param false_pos_test_list: list of mismatch alerting test cases, should not alerted but alerted
+        :param false_neg_test_list: list of mismatch non-alerting test cases, should alert but not alerted
         :param append_test_dir: whether to augment the test cases with new ids (start id from collect_local_start_ids)
+        :param is_rearranged: whether the test cases are rearranged from the validation result -- naming TP, TN, FP, FN
         :return: test info dict
         """
-        test_info = TestInfoDict(alerting=[], non_alerting=[])
         # set start ids for all types of tests
         if append_test_dir:
+            is_rearranged = True
             start_id_map = self.collect_local_start_ids(append_test_dir)
             logger.info(
-                f"Appending test cases with start ids: {start_id_map['alerting_id']}, {start_id_map['non_alerting_id']}, "
-                f"{start_id_map['mis_alerting_id']}, {start_id_map['mis_non_alerting_id']}"
+                f"Appending test cases with start ids: {start_id_map['TP_id']}, {start_id_map['TN_id']}, {start_id_map['FP_id']}, {start_id_map['FN_id']}"
             )
         else:
-            start_id_map = TestIdxDict(
-                alerting_id=1,
-                non_alerting_id=1,
-                mis_alerting_id=1,
-                mis_non_alerting_id=1,
-            )
+            start_id_map = TestIdxDict(TP_id=1, TN_id=1, FP_id=1, FN_id=1)
 
-        for i, test_case in enumerate(alerting_test_list):
+        test_info = TestInfoDict()
+        pos_key = "true_pos" if is_rearranged else "pos"
+        neg_key = "true_neg" if is_rearranged else "neg"
+
+        test_info[pos_key] = []
+        TP_prefix = "TruePosTest" if is_rearranged else "PosTest"
+        for i, test_case in enumerate(pos_test_list):
             class_name = extract_main_class(test_case)
-            expected_class_name = f"AlertingTest{start_id_map['alerting_id'] + i}"
+            expected_class_name = f"{TP_prefix}{start_id_map['TP_id'] + i}"
             if class_name != expected_class_name:
                 test_case = update_main_class(test_case, expected_class_name)
-            test_info["alerting"].append((expected_class_name, test_case))
+            test_info[pos_key].append((expected_class_name, test_case))
 
-        for i, test_case in enumerate(non_alerting_test_list):
+        test_info[neg_key] = []
+        TN_prefix = "TrueNegTest" if is_rearranged else "NegTest"
+        for i, test_case in enumerate(neg_test_list):
             class_name = extract_main_class(test_case)
-            expected_class_name = f"NonAlertingTest{start_id_map['non_alerting_id'] + i}"
+            expected_class_name = f"{TN_prefix}{start_id_map['TN_id'] + i}"
             if class_name != expected_class_name:
                 test_case = update_main_class(test_case, expected_class_name)
-            test_info["non_alerting"].append((expected_class_name, test_case))
+            test_info[neg_key].append((expected_class_name, test_case))
 
-        if mismatch_alerting_test_list:
-            test_info["mis_alerting"] = []
-            for i, test_case in enumerate(mismatch_alerting_test_list):
+        # mismatch alerting tests
+        if false_pos_test_list:
+            test_info["false_pos"] = []
+            FP_prefix = "FalsePosTest"
+            for i, test_case in enumerate(false_pos_test_list):
                 class_name = extract_main_class(test_case)
-                expected_class_name = f"MisAlertingTest{start_id_map['mis_alerting_id'] + i}"
+                expected_class_name = f"{FP_prefix}{start_id_map['FP_id'] + i}"
                 if class_name != expected_class_name:
                     test_case = update_main_class(test_case, expected_class_name)
-                test_info["mis_alerting"].append((expected_class_name, test_case))
+                test_info["false_pos"].append((expected_class_name, test_case))
 
-        if mismatch_non_alerting_test_list:
-            test_info["mis_non_alerting"] = []
-            for i, test_case in enumerate(mismatch_non_alerting_test_list):
+        # mismatch non-alerting tests
+        if false_neg_test_list:
+            test_info["false_neg"] = []
+            FN_prefix = "FalseNegTest"
+            for i, test_case in enumerate(false_neg_test_list):
                 class_name = extract_main_class(test_case)
-                expected_class_name = f"MisNonAlertingTest{start_id_map['mis_non_alerting_id'] + i}"
+                expected_class_name = f"{FN_prefix}{start_id_map['FN_id'] + i}"
                 if class_name != expected_class_name:
                     test_case = update_main_class(test_case, expected_class_name)
-                test_info["mis_non_alerting"].append((expected_class_name, test_case))
+                test_info["false_neg"].append((expected_class_name, test_case))
 
         return test_info
 
@@ -176,8 +180,8 @@ class TestManager:
 
         for label, sub_test_info in test_info.items():
             logger.info(f"Saving {len(sub_test_info)} {label} test cases...")
-            # Alerting/MisAlerting -> alert; NonAlerting/MisNonAlerting -> no-alert
-            sub_test_dir = test_dir / "no-alert" if "non_alerting" in label else test_dir / "alert"
+            # Pos/TruePos/FalsePos -> alert; Neg/TrueNeg/FalseNeg -> no-alert
+            sub_test_dir = test_dir / "alert" if "pos" in label else test_dir / "no-alert"
             sub_test_dir.mkdir(parents=True, exist_ok=True)
             for single_test_info in sub_test_info:
                 file_stem, test_case_code = single_test_info
@@ -188,8 +192,8 @@ class TestManager:
 
     def rearrange_test_info(self, val_res: dict) -> tuple[TestInfoDict, dict]:
         """
-        Rearrange the alert and non-alert sub-dir of the test directory based on the validation result.
-        Based on the validation result, move mismatches from alert/no-alert sub-dir and rearrage alerting/non-alerting ones.
+        Rearrange the alert and no-alert sub-dir of the test directory based on the validation result.
+        Based on the validation result, rearrange pos and neg test cases into TP, TN, FP, FN categories.
         val_res is a dictionary with the following structure:
         {
             "DSL_ORI": {"report": {file_name: [line_numbers]}, "pass": [list of passed files]},
@@ -202,67 +206,76 @@ class TestManager:
         assert "DSL_ORI" in val_res, f"--> DSL_ORI not found in the generation result {val_res}"
         logger.info("Rearranging test directory based on generation result...")
 
-        true_alerting_test_info = []
-        true_non_alerting_test_info = []
-        mis_alerting_test_info = [
-            (p.stem, p.read_text(encoding="utf-8")) for p in sorted(self.test_dir.glob("alert/MisAlerting*.java"))
+        true_pos_test_info = [
+            (p.stem, p.read_text(encoding="utf-8")) for p in sorted(self.test_dir.glob("alert/TruePosTest*.java"))
         ]
-        mis_non_alerting_test_info = [
-            (p.stem, p.read_text(encoding="utf-8")) for p in sorted(self.test_dir.glob("no-alert/MisNonAlerting*.java"))
+        true_neg_test_info = [
+            (p.stem, p.read_text(encoding="utf-8")) for p in sorted(self.test_dir.glob("no-alert/TrueNegTest*.java"))
+        ]
+        false_pos_test_info = [
+            (p.stem, p.read_text(encoding="utf-8")) for p in sorted(self.test_dir.glob("alert/FalsePosTest*.java"))
+        ]
+        false_neg_test_info = [
+            (p.stem, p.read_text(encoding="utf-8")) for p in sorted(self.test_dir.glob("no-alert/FalseNegTest*.java"))
         ]
 
         test_change_map = dict()
-        mis_alerting_count = 0
-        mis_non_alerting_count = 0
 
-        for alerting_file in val_res["DSL_ORI"]["report"].keys():
+        for pos_file in val_res["DSL_ORI"]["report"].keys():
             # true alerting test cases
-            if alerting_file.startswith("Alerting"):
-                alerting_test_code = (self.test_dir / "alert" / alerting_file).read_text(encoding="utf-8")
-                new_alerting_file = f"AlertingTest{len(true_alerting_test_info) + 1}.java"
-                true_alerting_test_info.append((Path(new_alerting_file).stem, alerting_test_code))
-                if alerting_file != new_alerting_file:
-                    test_change_map[alerting_file] = new_alerting_file
+            if pos_file.startswith("PosTest"):
+                pos_test_code = (self.test_dir / "alert" / pos_file).read_text(encoding="utf-8")
+                new_pos_stem = f"TruePosTest{len(true_pos_test_info) + 1}"
+                new_pos_file = f"{new_pos_stem}.java"
+                if pos_file != new_pos_file:
+                    pos_test_code = update_main_class(pos_test_code, new_pos_stem)
+                    test_change_map[pos_file] = new_pos_file
+                true_pos_test_info.append((new_pos_stem, pos_test_code))
             # mismatch alerting test cases
-            elif alerting_file.startswith("NonAlerting"):
-                alerting_test_code = (self.test_dir / "no-alert" / alerting_file).read_text(encoding="utf-8")
-                new_file_name = f"MisAlertingTest{len(mis_alerting_test_info) + 1}.java"
-                test_change_map[alerting_file] = new_file_name
-                mis_alerting_test_info.append((Path(new_file_name).stem, alerting_test_code))
-                mis_alerting_count += 1
-            else:
+            elif pos_file.startswith("NegTest"):
+                pos_test_code = (self.test_dir / "no-alert" / pos_file).read_text(encoding="utf-8")
+                new_file_stem = f"FalsePosTest{len(false_pos_test_info) + 1}"
+                pos_test_code = update_main_class(pos_test_code, new_file_stem)
+                false_pos_test_info.append((new_file_stem, pos_test_code))
+                test_change_map[pos_file] = f"{new_file_stem}.java"
+            elif "Neg" in pos_file:
+                # FalseNegTest or TrueNegTest
+                logger.error(f"Unexpected file {pos_file} is reported.")
                 continue
 
-        for non_alerting_file in val_res["DSL_ORI"]["pass"]:
+        for neg_file in val_res["DSL_ORI"]["pass"]:
             # true non-alerting test cases
-            if non_alerting_file.startswith("NonAlerting"):
-                non_alerting_test_code = (self.test_dir / "no-alert" / non_alerting_file).read_text(encoding="utf-8")
-                new_non_alerting_file = f"NonAlertingTest{len(true_non_alerting_test_info) + 1}.java"
-                true_non_alerting_test_info.append((Path(new_non_alerting_file).stem, non_alerting_test_code))
-                if non_alerting_file != new_non_alerting_file:
-                    test_change_map[non_alerting_file] = new_non_alerting_file
+            if neg_file.startswith("NegTest"):
+                neg_test_code = (self.test_dir / "no-alert" / neg_file).read_text(encoding="utf-8")
+                new_neg_file = f"TrueNegTest{len(true_neg_test_info) + 1}.java"
+                if neg_file != new_neg_file:
+                    neg_test_code = update_main_class(neg_test_code, Path(new_neg_file).stem)
+                    test_change_map[neg_file] = new_neg_file
+                true_neg_test_info.append((Path(new_neg_file).stem, neg_test_code))
             # mismatch non-alerting test cases
-            elif non_alerting_file.startswith("Alerting"):
-                non_alerting_test_code = (self.test_dir / "alert" / non_alerting_file).read_text(encoding="utf-8")
-                new_file_name = f"MisNonAlertingTest{len(mis_non_alerting_test_info) + 1}.java"
-                mis_non_alerting_test_info.append((Path(new_file_name).stem, non_alerting_test_code))
-                test_change_map[non_alerting_file] = new_file_name
-                mis_non_alerting_count += 1
-            else:
+            elif neg_file.startswith("PosTest"):
+                neg_test_code = (self.test_dir / "alert" / neg_file).read_text(encoding="utf-8")
+                new_file_name = f"FalseNegTest{len(false_neg_test_info) + 1}.java"
+                neg_test_code = update_main_class(neg_test_code, Path(new_file_name).stem)
+                false_neg_test_info.append((Path(new_file_name).stem, neg_test_code))
+                test_change_map[neg_file] = new_file_name
+            elif "Pos" in neg_file:
+                # FalsePosTest or TruePosTest
+                logger.error(f"Unexpected file {neg_file} is not reported.")
                 continue
 
         logger.info(
-            f"Rearrage result: identified {mis_alerting_count} MismatchAlerting and {mis_non_alerting_count} Mismatch-Non-Alerting."
+            f"Rearrage result: identified {len(false_pos_test_info)} False-Positive and {len(false_neg_test_info)} False-Negative."
         )
         rearraged_test_info = TestInfoDict(
-            alerting=true_alerting_test_info,
-            non_alerting=true_non_alerting_test_info,
-            mis_alerting=mis_alerting_test_info,
-            mis_non_alerting=mis_non_alerting_test_info,
+            true_pos=true_pos_test_info,
+            true_neg=true_neg_test_info,
+            false_pos=false_pos_test_info,
+            false_neg=false_neg_test_info,
         )
 
         if not test_change_map:
-            return rearraged_test_info, json.loads(val_res)
+            return rearraged_test_info, val_res
 
         val_res_str = json.dumps(val_res)
         pattern = re.compile("|".join(re.escape(k) for k in sorted(test_change_map, key=len, reverse=True)))
@@ -271,40 +284,54 @@ class TestManager:
 
         return rearraged_test_info, new_val_res
 
-    def append_test_info(self, final_test_info: TestInfoDict, target_test_dir: Path = None) -> TestInfoDict:
+    def append_test_info(
+        self, final_test_info: TestInfoDict, target_test_dir: Path = None, do_opposite: bool = False
+    ) -> TestInfoDict:
         """
+        :param final_test_info: Final rearranged test information to append.
+        :param target_test_dir: Target test directory to append the test information.
+        :param do_opposite: If True, the dsl_checker is in the opposite mode, meaning the test cases should also be reverted
         Append tests with test info to the aggregate test directory.
         """
         if not target_test_dir:
             target_test_dir = self.test_dir if self.test_dir.endswith("/test") else self.test_dir.parent / "test"
 
         logger.info(f"Apending final rearranged test information to {target_test_dir}")
-        # collect the start ids for appending alerting, non-alerting, and mismatch tests
-        new_test_info = self.create_test_info(
-            alerting_test_list=[t[1] for t in final_test_info["alerting"]],
-            non_alerting_test_list=[t[1] for t in final_test_info["non_alerting"]],
-            mismatch_alerting_test_list=[t[1] for t in final_test_info["mis_alerting"]],
-            mismatch_non_alerting_test_list=[t[1] for t in final_test_info["mis_non_alerting"]],
-            append_test_dir=target_test_dir,
-        )
+        # collect the start ids for appending all TP, TN, FP, FN tests
+        if do_opposite:
+            new_test_info = self.create_test_info(
+                pos_test_list=[t[1] for t in final_test_info["true_neg"]],
+                neg_test_list=[t[1] for t in final_test_info["true_pos"]],
+                false_pos_test_list=[t[1] for t in final_test_info["false_neg"]],
+                false_neg_test_list=[t[1] for t in final_test_info["false_pos"]],
+                append_test_dir=target_test_dir,
+            )
+        else:
+            new_test_info = self.create_test_info(
+                pos_test_list=[t[1] for t in final_test_info["true_pos"]],
+                neg_test_list=[t[1] for t in final_test_info["true_neg"]],
+                false_pos_test_list=[t[1] for t in final_test_info["false_pos"]],
+                false_neg_test_list=[t[1] for t in final_test_info["false_neg"]],
+                append_test_dir=target_test_dir,
+            )
         self.save_test_info(new_test_info, append_test_dir=target_test_dir)
 
 
 if __name__ == "__main__":
     # test rearrange_test_info using kirin_ws\ONLINE_Use_Unsafe_Algorithm_IDEA\test
-    test_manager = TestManager(Path("kirin_ws/ONLINE_Use_Unsafe_Algorithm_IDEA/tmp/test"))
+    test_manager = TestManager(Path("kirin_ws/test_tmp/tmp/test"))
     val_res = {
         "DSL_ORI": {
             "report": {
-                "AlertingTest1.java": [1],
-                "AlertingTest2.java": [1],
-                "AlertingTest4.java": [2],
-                "NonAlertingTest1.java": [3],
+                "TruePosTest1.java": [1],
+                "PosTest1.java": [1],
+                "PosTest2.java": [1],
+                "NegTest1.java": [3],
             },
-            "pass": ["NonAlertingTest2.java", "NonAlertingTest3.java", "AlertingTest3.java"],
+            "pass": ["PosTest3.java", "NegTest2.java"],
         }
     }
-    re_test_info, new_val_res = test_manager.rearrage_test_info(val_res)
+    re_test_info, new_val_res = test_manager.rearrange_test_info(val_res)
     logger.info("Rearranged Test Information:")
     for label in re_test_info:
         file_list = list(map(lambda x: x[0], re_test_info[label]))

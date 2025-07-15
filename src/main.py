@@ -14,7 +14,7 @@ from src.utils._helper import create_dir_with_path, collect_failed_dsl_paths
 
 
 COMPILATION_FAIL_THRESHOLD = 0.6  # Threshold for test compilation failure ratio
-MISMATCH_THRESHOLD = 0.5  # Threshold for test mismatch ratio
+RECALL_THRESHOLD = 0.6  # Threshold for test mismatch ratio for each type of test (positive/negative) 0.6
 
 
 def initialize_dsl_ws(dsl_info: DslInfoDict, do_clean_up: bool = False):
@@ -111,8 +111,7 @@ def gen_compilable_tests(dsl_id: str, checker_dsl: str, gen_type: str = "all", u
     test_count = 0  # Record the generated or existed tests
     skip_gen_flag = False  # Flag to indicate if generation should be skipped
     if use_exist_tests:
-        tmp_start_id_map = tmp_test_manager.collect_local_start_ids(tmp_ws_test_dir)
-        test_count = sum(tmp_start_id_map.values()) - len(tmp_start_id_map)
+        test_count = len(list(tmp_ws_test_dir.rglob("*.java")))
         if test_count > 0:
             skip_gen_flag = True
             logger.info(f"Found {test_count} existed test cases in {tmp_ws_test_dir}, skip...")
@@ -129,11 +128,11 @@ def gen_compilable_tests(dsl_id: str, checker_dsl: str, gen_type: str = "all", u
         # alerting_test_list, non_alerting_tests = gen_checker_tests(checker_dsl, gen_type)
 
         test_info = tmp_test_manager.create_test_info(alerting_test_list, non_alerting_tests)
-        if not test_info.get("alerting", []) and not test_info.get("non_alerting", []):
+        if not test_info.get("pos", []) and not test_info.get("neg", []):
             raise ValueError(f"No test cases generated for DSL {dsl_id} with gen_type {gen_type}. ")
 
         # update the test case count and save the tests
-        test_count = len(test_info["alerting"]) + len(test_info["non_alerting"])
+        test_count = len(test_info["pos"]) + len(test_info["neg"])
         tmp_test_manager.save_test_info(test_info)
 
     # try to compile the test cases (mock lib + compile lib + compile test)
@@ -152,9 +151,14 @@ def gen_compilable_tests(dsl_id: str, checker_dsl: str, gen_type: str = "all", u
     return True
 
 
-def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exist_tests: bool = False) -> bool:
+def gen_flow_once(
+    dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exist_tests: bool = False, do_opposite: bool = False
+) -> bool:
     """
     Generate tests and validate for a single DSL, including compilation and validation.
+    :param gen_type: The type of tests to generate, can be "all", "alerting", or "non-alerting".
+    :param use_exist_tests: Whether to use existing tests if available in test dir.
+    :param do_opposite: When we are generating positive tests for the opposite sub-DSL, this should be True.
     return: status of the validation flow, True if successful, False if failed.
     """
     dsl_ws = Path("kirin_ws") / dsl_id
@@ -169,7 +173,8 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
     # clean up the tmp test dir if use_exist_tests is False
     create_dir_with_path(tmp_ws_test_dir, cleanup=(not use_exist_tests))
 
-    mismatch_max_retries = 1
+    refine_max_attempts = 1
+    refine_attempt = 0
     gen_flow_status = False
     while not gen_flow_status:
         # generate compilable tests in the tmp test dir
@@ -181,60 +186,69 @@ def gen_flow_once(dsl_id: str, checker_dsl: str, gen_type: str = "all", use_exis
         # validate tests in the tmp test dir
         tmp_val_res = validate_tests(dsl_id, val_type="tmp")
         rearraged_test_info, tmp_val_res = tmp_test_manager.rearrange_test_info(tmp_val_res)
-        tmp_test_manager.save_test_info(rearraged_test_info)
 
         # [Verify] Mismatch tests -> Refine test cases
-        test_count = sum(list(map(len, rearraged_test_info.values())))
-        mismatch_test_count = len(rearraged_test_info.get("mis_alerting", [])) + len(
-            rearraged_test_info.get("mis_non_alerting", [])
-        )
-        mismatch_ratio = mismatch_test_count / test_count if test_count > 0 else 1
+        tp_count = len(rearraged_test_info.get("true_pos", []))
+        tn_count = len(rearraged_test_info.get("true_neg", []))
+        fp_count = len(rearraged_test_info.get("false_pos", []))
+        fn_count = len(rearraged_test_info.get("false_neg", []))
 
-        mismatch_type_flag = False  # no alerts or no non-alerts but needed in gen_type
-        if gen_type == "all" or gen_type == "alerting":
-            mismatch_type_flag = mismatch_type_flag or len(rearraged_test_info.get("alerting", [])) == 0
-        if gen_type == "all" or gen_type == "non-alerting":
-            mismatch_type_flag = mismatch_type_flag or len(rearraged_test_info.get("non_alerting", [])) == 0
+        pos_recall = tp_count / (tp_count + fn_count) if (tp_count + fn_count) > 0 else 1
+        neg_recall = tn_count / (tn_count + fp_count) if (tn_count + fp_count) > 0 else 1
 
-        if mismatch_ratio >= MISMATCH_THRESHOLD or mismatch_type_flag:
-            mismatch_max_retries -= 1
-            if mismatch_max_retries < 0:
-                logger.warning(f"Mismatch ratio {mismatch_ratio:.2f} is too high, but max retries reached, stopping...")
+        # refine for the first time
+        if refine_attempt == 0:
+            RECALL_THRESHOLD = 1
+
+        if pos_recall < RECALL_THRESHOLD or neg_recall < RECALL_THRESHOLD:
+            refine_attempt += 1
+            if refine_attempt > refine_max_attempts:
+                logger.warning(
+                    f"Recall ratio {pos_recall:.2f}/{neg_recall:.2f} is too low, but max retries reached, stopping..."
+                )
+                tmp_test_manager.save_test_info(rearraged_test_info)
                 return False
-
-            logger.warning(f"Mismatch ratio {mismatch_ratio:.2f} is too high, try refining test cases...")
+            logger.warning(f"Recall ratio {pos_recall:.2f}/{neg_recall:.2f} is too low, try refining test cases...")
             # clean up the tmp test dir
             create_dir_with_path(tmp_ws_test_dir, cleanup=True)
             # refine the tests
-            refined_alerting_test_list = [t[1] for t in rearraged_test_info.get("alerting", [])]
-            refined_non_alerting_test_list = [t[1] for t in rearraged_test_info.get("non_alerting", [])]
+            new_pos_test_list = [t[1] for t in rearraged_test_info.get("true_pos", [])]
+            new_neg_test_list = [t[1] for t in rearraged_test_info.get("true_neg", [])]
+            new_false_pos_test_list = [t[1] for t in rearraged_test_info.get("false_pos", [])]
+            new_false_neg_test_list = [t[1] for t in rearraged_test_info.get("false_neg", [])]
 
-            if rearraged_test_info.get("mis_non_alerting", []):
-                mis_non_alerting_test_list = [t[1] for t in rearraged_test_info["mis_non_alerting"]]
-                refined_alerting_tests = refine_checker_tests(
-                    mis_non_alerting_test_list, checker_dsl, refine_type="alerting"
-                )
-                refined_alerting_test_list.extend(refined_alerting_tests)
-            if rearraged_test_info.get("mis_alerting", []):
-                mis_alerting_test_list = [t[1] for t in rearraged_test_info["mis_alerting"]]
-                refined_non_alerting_tests = refine_checker_tests(
-                    mis_alerting_test_list, checker_dsl, refine_type="non-alerting"
-                )
-                refined_non_alerting_test_list.extend(refined_non_alerting_tests)
+            if pos_recall < RECALL_THRESHOLD:
+                fn_test_list = [t[1] for t in rearraged_test_info["false_neg"]]
+                refined_pos_tests = refine_checker_tests(fn_test_list, checker_dsl, refine_type="alerting")
+                new_pos_test_list.extend(refined_pos_tests)
+                new_false_neg_test_list.clear()
+
+            if neg_recall < RECALL_THRESHOLD:
+                fp_test_list = [t[1] for t in rearraged_test_info["false_pos"]]
+                refined_neg_tests = refine_checker_tests(fp_test_list, checker_dsl, refine_type="non-alerting")
+                new_neg_test_list.extend(refined_neg_tests)
+                new_false_pos_test_list.clear()
 
             refined_test_info = tmp_test_manager.create_test_info(
-                alerting_test_list=refined_alerting_test_list,
-                non_alerting_test_list=refined_non_alerting_test_list,
+                pos_test_list=new_pos_test_list,
+                neg_test_list=new_neg_test_list,
+                false_pos_test_list=new_false_pos_test_list,
+                false_neg_test_list=new_false_neg_test_list,
+                is_rearranged=False,
             )
             tmp_test_manager.save_test_info(refined_test_info)
             # in the next round, we will use the saved refined tests
             use_exist_tests = True
         else:
-            # saving tests to the final test directory and clear tmp test dir
+            # saving tests into the tmp test dir and the final test directory
+            tmp_test_manager.save_test_info(rearraged_test_info)
             dsl_ws_test_dir = dsl_ws / "test"
-            tmp_test_manager.append_test_info(rearraged_test_info, target_test_dir=dsl_ws_test_dir)
+            tmp_test_manager.append_test_info(
+                rearraged_test_info, target_test_dir=dsl_ws_test_dir, do_opposite=do_opposite
+            )
             # shutil.rmtree(tmp_ws_dir)
             gen_flow_status = True
+
     return gen_flow_status
 
 
@@ -257,17 +271,20 @@ def gen_flow_regression(dsl_info: DslInfoDict, gen_flow_max_retries: int = 1):
             gen_flow_status = gen_flow_once(dsl_info["id"], dsl_info["dsl"], gen_type="all", use_exist_tests=False)
             gen_flow_max_retries -= 1
 
-    # validate with the all checker dsls and aggregated tests
+    # TODO)) set to "all", validate with all checker dsls and aggregated tests
     full_val_res = validate_tests(dsl_id, val_type="tmp")
 
     # scenario-coverage test augmentation
-    # failed_dsl_paths = collect_failed_dsl_paths(dsl_id, full_val_res)
-    # logger.info(f"Identified {len(failed_dsl_paths)} failed checker DSLs to augment tests.")
+    failed_dsl_paths = collect_failed_dsl_paths(dsl_id, full_val_res)
+    logger.info(f"Identified {len(failed_dsl_paths)} failed checker DSLs to augment tests.")
+
     # for i, failed_dsl_path in enumerate(failed_dsl_paths):
+    #     do_opposite = "OPP" in failed_dsl_path.stem
     #     failed_dsl = failed_dsl_path.read_text(encoding="utf-8")
     #     logger.info(f"Augmenting tests for [{i+1}/{len(failed_dsl_paths)}] failed DSL: {failed_dsl_path}")
-    #     gen_flow_once(dsl_id, failed_dsl, gen_type="alerting", use_exist_tests=False)
+    #     gen_flow_once(dsl_id, failed_dsl, gen_type="alerting", use_exist_tests=False, do_opposite=do_opposite)
     # full_val_res = validate_tests(dsl_id, val_type="all")
+
     return full_val_res
 
 
@@ -276,7 +293,7 @@ def main():
     Main function to run the Kirin DSL analysis.
     """
     # Load the dataset
-    dataset_path = Path("data/test/test_one.json")
+    dataset_path = Path("data/test/test_cur.json")
     with open(dataset_path, "r", encoding="utf-8") as f:
         dsl_info_list: list[DslInfoDict] = json.load(f)
 

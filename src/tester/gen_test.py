@@ -43,7 +43,7 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
 
     while attempts < max_attempts and len(input_test_list) > 0:
         attempts += 1
-        logger.warning(f"--> [Detected LLM SyntaxFix Failure] Retrying (attempt {attempts}/{max_attempts})...")
+        logger.warning(f"--> [Detected SyntaxError] Try LLM SyntaxFix (attempt {attempts}/{max_attempts})...")
         # construct the user prompt
         wrapped_java_code = "\n\n".join([f"```java\n{test_code}\n```" for test_code in input_test_list])
         user_prompt = PROMPTS["fix_syntax_error"].format(

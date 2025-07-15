@@ -18,12 +18,12 @@ PREMITIVE_TYPE_DEFAULT = {
     "byte": "0",
     "short": "0",
     "int": "0",
-    "long": "0",
+    "long": "0L",
     "float": "0.0",
     "double": "0.0",
-    "char": "\u0000",
+    "char": "\0",
     "boolean": "false",
-    "Class": "null",
+    "Class": "void.class",
     "Object": "null",
     "String": '""',
 }
@@ -133,9 +133,9 @@ class JavaDependencyParser:
                             class_body += f"\t{arg_type} {arg_name}() default {default_value};\n"
                         else:
                             if arg_type.endswith("[]"):
-                                class_body += f"\t{arg_type} {arg_name}() default null;\n"
+                                class_body += f"\t{arg_type} {arg_name}() default {{}};\n"
                             else:
-                                class_body += f"\tObject {arg_name}() default null;\n"
+                                class_body += f"\t{arg_type} {arg_name}();\n"
                     lib_code += f"{class_body.rstrip()}\n}}\n"
                     res[class_fqn] = lib_code
                     continue

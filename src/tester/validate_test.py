@@ -35,21 +35,14 @@ def validate_tests(dsl_id, val_type: str = "all") -> DslValResDict:
     return parse_xml_results(dsl_id, val_type)
 
 
-def sorted_test_files(file_name_list: list[str], type: str = "report") -> list[str]:
+def sorted_test_files(file_name_list: list[str]) -> list[str]:
     """
     Sort files for report and pass result.
     Used for val_res postprocess to ensure least tests are modified when rearrange_test_info.
     """
-    res = []
-    if type == "report":
-        # AlertingTest1, AlertingTest2, MisAlertingTest, NonAlertingTest1
-        res = sorted(file_name_list)
-    elif type == "pass":
-        # NonAlertingTest1, NonAlertingTest2, MisNonAlertingTest1, AlertingTest1
-        res = sorted(file_name_list, key=lambda s: (-(ord(s[0])), s[1:]))
-    else:
-        raise ValueError(f"--> Invalid test folder type {type}!")
-    return res
+    # True* first: True*, Pos*, Neg*, False*
+    # Sort by the first character (reverse), then by the rest of the string
+    return sorted(file_name_list, key=lambda s: (-(ord(s[0])), s[1:]))
 
 
 def parse_xml_results(dsl_id, val_type: str = "all") -> dict[str, DslValResDict]:
@@ -101,11 +94,11 @@ def parse_xml_results(dsl_id, val_type: str = "all") -> dict[str, DslValResDict]
         # sort the key of report dict
         report_dict_ori = result[checker_name]["report"]
         result[checker_name]["report"] = {
-            k: report_dict_ori[k] for k in sorted_test_files(list(report_dict_ori.keys()), type="report")
+            k: report_dict_ori[k] for k in sorted_test_files(list(report_dict_ori.keys()))
         }
         # get sorted passed files
         pass_files = [f for f in scan_files if f not in result[checker_name]["report"]]
-        result[checker_name]["pass"] = sorted_test_files(pass_files, type="pass")
+        result[checker_name]["pass"] = sorted_test_files(pass_files)
 
     # handle unreported DSL_ORI checker
     if "DSL_ORI" not in result:
@@ -123,7 +116,7 @@ def parse_xml_results(dsl_id, val_type: str = "all") -> dict[str, DslValResDict]
     for checker_file in checker_dir.glob("**/*.kirin"):
         checker_name = checker_file.stem
         if checker_name not in result:
-            result[checker_name] = {"report": dict(), "pass": sorted_test_files(list(scan_files), type="pass")}
+            result[checker_name] = {"report": dict(), "pass": sorted_test_files(list(scan_files))}
 
     # log output
     sorted_keys = sorted(list(result.keys()), key=lambda x: (len(x), x))
