@@ -17,11 +17,15 @@ def extract_main_class(test_case: str) -> str:
     :return: main class name
     """
     # extract the main public class name from the test case
-    pattern = r"public\s+class\s+(\w+)"
+    pattern = r"public.+class\s+(\w+)\s+.*{"
     match = re.search(pattern, test_case)
     class_name = ""
     if match:
         class_name = match.group(1)
+    else:
+        coarse_pattern = r"class\s+(\w+)\s+.*{"
+        coarse_match = re.search(coarse_pattern, test_case)
+        class_name = coarse_match.group(1) if coarse_match else ""
     if not class_name:
         logger.warning(f"--> No public main class found in the test case: {test_case}")
     return class_name
@@ -37,13 +41,17 @@ def update_main_class(test_case: str, class_name: str) -> str:
     # update the main public class name in the test case
     pattern = r"public.+class\s+(\w+)\s+.*{"
     # replace the class name with the new class name
-    ori_class_name = re.search(pattern, test_case)
+    ori_class_match = re.search(pattern, test_case)
+    ori_class_name = ori_class_match.group(1) if ori_class_match else ""
+    if not ori_class_name:
+        coarse_pattern = r"class\s+(\w+)\s+.*{"
+        ori_class_coarse_match = re.search(coarse_pattern, test_case)
+        ori_class_name = ori_class_coarse_match.group(1) if ori_class_coarse_match else ""
+
     if not ori_class_name:
         logger.error(f"--> No public main class found in the test case: {test_case}")
         return test_case
-    else:
-        ori_class_name = ori_class_name.group(1)
-        new_test_case = test_case.replace(ori_class_name, class_name)
+    new_test_case = test_case.replace(ori_class_name, class_name)
     return new_test_case
 
 

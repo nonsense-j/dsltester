@@ -1,5 +1,6 @@
 ## Additional information
 ### Extra Explanations of DSL Semantics
+- "annotation" locates the usage of an annotation like '@TheAnnotation(num = 3)', instead of its declaration.
 - For a variableAccess node va, "va.variable" locates the variable definition of the used variable, which is a variableDeclaration node.
 - For a functionCall node fc, "fc.function" locates the function definition of the called function, which is a functionDeclaration node.
 - For a functionDeclaration node fd, "fd.functionUsage" locates all the function uasges that call fd, which are functionCall nodes. "fd.callers" locates all the callers of fd, which are functionDeclaration nodes that call fd. "fd.functionCalls" locates all the function calls in the body of fd, which are functionCall nodes. "fd.subMethods" locates all the overridden methods of fd, which are functionDeclaration nodes. "fd.superMethods" locates all the parent methods of fd, which are also functionDeclaration nodes.

@@ -197,10 +197,9 @@ def gen_flow_once(
         neg_recall = tn_count / (tn_count + fp_count) if (tn_count + fp_count) > 0 else 1
 
         # refine for the first time
-        if refine_attempt == 0:
-            RECALL_THRESHOLD = 1
+        cur_recall_threshould = 1 if refine_attempt == 0 else RECALL_THRESHOLD
 
-        if pos_recall < RECALL_THRESHOLD or neg_recall < RECALL_THRESHOLD:
+        if pos_recall < cur_recall_threshould or neg_recall < cur_recall_threshould:
             refine_attempt += 1
             if refine_attempt > refine_max_attempts:
                 logger.warning(
@@ -217,13 +216,13 @@ def gen_flow_once(
             new_false_pos_test_list = [t[1] for t in rearraged_test_info.get("false_pos", [])]
             new_false_neg_test_list = [t[1] for t in rearraged_test_info.get("false_neg", [])]
 
-            if pos_recall < RECALL_THRESHOLD:
+            if pos_recall < cur_recall_threshould:
                 fn_test_list = [t[1] for t in rearraged_test_info["false_neg"]]
                 refined_pos_tests = refine_checker_tests(fn_test_list, checker_dsl, refine_type="alerting")
                 new_pos_test_list.extend(refined_pos_tests)
                 new_false_neg_test_list.clear()
 
-            if neg_recall < RECALL_THRESHOLD:
+            if neg_recall < cur_recall_threshould:
                 fp_test_list = [t[1] for t in rearraged_test_info["false_pos"]]
                 refined_neg_tests = refine_checker_tests(fp_test_list, checker_dsl, refine_type="non-alerting")
                 new_neg_test_list.extend(refined_neg_tests)
@@ -252,7 +251,7 @@ def gen_flow_once(
     return gen_flow_status
 
 
-def gen_flow_regression(dsl_info: DslInfoDict, gen_flow_max_retries: int = 1):
+def gen_flow_regression(dsl_info: DslInfoDict, gen_flow_max_retries: int = 0):
     """
     Generate tests and validate for a single DSL as a regression flow.
     :param dsl_info: The DSL information dictionary containing 'id' and 'dsl'.
@@ -293,9 +292,9 @@ def main():
     Main function to run the Kirin DSL analysis.
     """
     # Load the dataset
-    dataset_path = Path("data/test/test_cur.json")
+    dataset_path = Path("data/test/test_unit.json")
     with open(dataset_path, "r", encoding="utf-8") as f:
-        dsl_info_list: list[DslInfoDict] = json.load(f)
+        dsl_info_list: list[DslInfoDict] = json.load(f)[:20]
 
     res_path = dataset_path.parent / f"{dataset_path.stem}_result.json"
     final_result = []
@@ -309,6 +308,9 @@ def main():
         logger.info(f"====== Processing DSL #{i + 1}/{len(dsl_info_list)} ======")
         # initialize the DSL workspace and set log file for each dsl
         dsl_id = dsl_info["id"]
+        if Path(f"kirin_ws/{dsl_id}").is_dir():
+            logger.info(f"Found existing DSL workspace for {dsl_info['id']}, skip...")
+            continue
         # if (kirin_ws_dir / dsl_id).is_dir():
         #     logger.info(f"Found existing DSL workspace for {dsl_id}, skip...")
         #     continue

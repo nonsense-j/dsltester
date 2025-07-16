@@ -27,7 +27,7 @@ Both types of tests should be generated with minimal overlapping logic.
 3. **Minimal Code Structure**. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
-4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
+4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file with a public main class and necessary imports. \
 Throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Correct imports**. Every used symbol must either be defined in the code or correctly imported. For third-party classes or annotations, \
 you must correctly import them with fully qualified names or directly use them in the fully qualified form. \
@@ -41,7 +41,7 @@ to highlight the specific checking scenario it covers. Never mention the test in
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
-Step 2. **Generate Tests**. Output each alerting test wrapped in "<alerting_test>" and "</alerting_test>", and each non-alerting test wrapped in \
+Step 2. **Generate Tests**. Directly output each alerting test wrapped in "<alerting_test>" and "</alerting_test>", and each non-alerting test wrapped in \
 "<non_alerting_test>" and "</non_alerting_test>". Never use "```java".
 
 ### Your Task
@@ -71,7 +71,7 @@ over rule descriptions (if provided), where the rule often describes suggested p
 3. **Minimal Code Structure**. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
-4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
+4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file with a public main class and necessary imports. \
 Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Correct Imports**. Every used symbol must either be defined in the code or correctly imported. For third-party classes or annotations, \
 you must correctly import them with fully qualified names or directly use them in the fully qualified form. \
@@ -85,7 +85,7 @@ Never mention the test index in any comment.
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
-Step 2. **Generate Alerting Tests**. Output each alerting test wrapped in "<alerting_test>" and "</alerting_test>". Never use "```java".
+Step 2. **Generate Alerting Tests**. Directly output each alerting test wrapped in "<alerting_test>" and "</alerting_test>". Never use "```java".
 
 ### Your Task
 ### Checker DSL
@@ -113,7 +113,7 @@ I only care about these non-alerting test cases, which are often compliant examp
 3. **Minimal Code Structure**. Keep code simple, minimal, and free of irrelevant logic. Use basic statements (e.g., separate calls) rather than \
 complex patterns (e.g., chained methods) unless explicitly required in the checker. Use unchecked exceptions (e.g., RuntimeException, NullPointerException) \
 rather than checked ones (e.g., IOException) unless explicitly required in the checker.
-4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file including necessary imports. \
+4. **Must Pass Compilation**. Guarantee 100%% compilability for every test case, which must be a complete Java file with a public main class and necessary imports. \
 Do throw necessary exceptions to ensure the code is valid and compilable unless explicitly excluded by the checker.
 5. **Correct Imports**. Every used symbol must either be defined in the code or correctly imported. For third-party classes or annotations, \
 you must correctly import them with fully qualified names or directly use them in the fully qualified form. \
@@ -127,7 +127,7 @@ Never mention the test index in any comment.
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
 you should carefully understand every regex pattern in the DSL and its correct matching logic. 
-Step 2. **Generate Non-alerting Tests**. Output each non-alerting test wrapped in "<non_alerting_test>" and "</non_alerting_test>". Never use "```java".
+Step 2. **Generate Non-alerting Tests**. Directly output each non-alerting test wrapped in "<non_alerting_test>" and "</non_alerting_test>". Never use "```java".
 
 ### Your Task
 ### Checker DSL
@@ -142,7 +142,8 @@ PROMPTS[
 ] = """\
 ## General Goal
 Given a code checker (in DSL format) and test cases (in Java code) that **fail to trigger alerts**, modify each test case minimally to ensure \
-the checker reports it. Preserve the test's core scenario and main class name while closing the gap between the checker's logic and test code.
+the checker reports it. Preserve the test's core scenario and main class name while closing the gap between the checker's logic and test code. \
+Only when you strongly persist that the test has already satisfied the checking logic, you can output it without any modification.
 
 ### Critical Rules
 1. **Trigger Checker Reporting**  
@@ -153,7 +154,6 @@ the checker reports it. Preserve the test's core scenario and main class name wh
    - Retain existing imports and core logic flow
    - The modified test must still be a complete Java file that can compile successfully
    - Retain or refine comments to highlight the specific checking scenario for each test and never mention the test index in any comment
-
    
 ### Checker DSL
 <checker_dsl>
@@ -172,7 +172,8 @@ PROMPTS[
 ] = """\
 ## General Goal
 Given a code checker (in DSL format) and test cases (Java code) that **are incorrectly triggering alerts**, modify each test case minimally to ensure the checker no longer reports them. \
-Preserve the test's core scenario and main class name while closing the gap between the checker's logic and test code.
+Preserve the test's core scenario and main class name while closing the gap between the checker's logic and test code. \
+Only when you strongly persist that the test has already passed the checking logic, you can output it without any modification.
 
 ### Critical Rules
 1. **Suppress Checker Reporting**  
