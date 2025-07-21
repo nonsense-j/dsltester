@@ -130,19 +130,19 @@ class TestManager:
         test_info[pos_key] = []
         TP_prefix = "TruePosTest" if is_rearranged else "PosTest"
         for i, test_case in enumerate(pos_test_list):
-            class_name = extract_main_class(test_case)
             expected_class_name = f"{TP_prefix}{start_id_map['TP_id'] + i}"
-            if class_name != expected_class_name:
-                test_case = update_main_class(test_case, expected_class_name)
+            # class_name = extract_main_class(test_case)
+            # if class_name != expected_class_name:
+            #     test_case = update_main_class(test_case, expected_class_name)
             test_info[pos_key].append((expected_class_name, test_case))
 
         test_info[neg_key] = []
         TN_prefix = "TrueNegTest" if is_rearranged else "NegTest"
         for i, test_case in enumerate(neg_test_list):
-            class_name = extract_main_class(test_case)
             expected_class_name = f"{TN_prefix}{start_id_map['TN_id'] + i}"
-            if class_name != expected_class_name:
-                test_case = update_main_class(test_case, expected_class_name)
+            # class_name = extract_main_class(test_case)
+            # if class_name != expected_class_name:
+            #     test_case = update_main_class(test_case, expected_class_name)
             test_info[neg_key].append((expected_class_name, test_case))
 
         # mismatch alerting tests
@@ -150,10 +150,10 @@ class TestManager:
             test_info["false_pos"] = []
             FP_prefix = "FalsePosTest"
             for i, test_case in enumerate(false_pos_test_list):
-                class_name = extract_main_class(test_case)
                 expected_class_name = f"{FP_prefix}{start_id_map['FP_id'] + i}"
-                if class_name != expected_class_name:
-                    test_case = update_main_class(test_case, expected_class_name)
+                # class_name = extract_main_class(test_case)
+                # if class_name != expected_class_name:
+                #     test_case = update_main_class(test_case, expected_class_name)
                 test_info["false_pos"].append((expected_class_name, test_case))
 
         # mismatch non-alerting tests
@@ -161,10 +161,10 @@ class TestManager:
             test_info["false_neg"] = []
             FN_prefix = "FalseNegTest"
             for i, test_case in enumerate(false_neg_test_list):
-                class_name = extract_main_class(test_case)
                 expected_class_name = f"{FN_prefix}{start_id_map['FN_id'] + i}"
-                if class_name != expected_class_name:
-                    test_case = update_main_class(test_case, expected_class_name)
+                # class_name = extract_main_class(test_case)
+                # if class_name != expected_class_name:
+                #     test_case = update_main_class(test_case, expected_class_name)
                 test_info["false_neg"].append((expected_class_name, test_case))
 
         return test_info
@@ -236,14 +236,14 @@ class TestManager:
                 new_pos_stem = f"TruePosTest{len(true_pos_test_info) + 1}"
                 new_pos_file = f"{new_pos_stem}.java"
                 if pos_file != new_pos_file:
-                    pos_test_code = update_main_class(pos_test_code, new_pos_stem)
+                    # pos_test_code = update_main_class(pos_test_code, new_pos_stem)
                     test_change_map[pos_file] = new_pos_file
                 true_pos_test_info.append((new_pos_stem, pos_test_code))
             # mismatch alerting test cases
             elif pos_file.startswith("NegTest"):
                 pos_test_code = (self.test_dir / "no-alert" / pos_file).read_text(encoding="utf-8")
                 new_file_stem = f"FalsePosTest{len(false_pos_test_info) + 1}"
-                pos_test_code = update_main_class(pos_test_code, new_file_stem)
+                # pos_test_code = update_main_class(pos_test_code, new_file_stem)
                 false_pos_test_info.append((new_file_stem, pos_test_code))
                 test_change_map[pos_file] = f"{new_file_stem}.java"
             elif "Neg" in pos_file:
@@ -257,14 +257,14 @@ class TestManager:
                 neg_test_code = (self.test_dir / "no-alert" / neg_file).read_text(encoding="utf-8")
                 new_neg_file = f"TrueNegTest{len(true_neg_test_info) + 1}.java"
                 if neg_file != new_neg_file:
-                    neg_test_code = update_main_class(neg_test_code, Path(new_neg_file).stem)
+                    # neg_test_code = update_main_class(neg_test_code, Path(new_neg_file).stem)
                     test_change_map[neg_file] = new_neg_file
                 true_neg_test_info.append((Path(new_neg_file).stem, neg_test_code))
             # mismatch non-alerting test cases
             elif neg_file.startswith("PosTest"):
                 neg_test_code = (self.test_dir / "alert" / neg_file).read_text(encoding="utf-8")
                 new_file_name = f"FalseNegTest{len(false_neg_test_info) + 1}.java"
-                neg_test_code = update_main_class(neg_test_code, Path(new_file_name).stem)
+                # neg_test_code = update_main_class(neg_test_code, Path(new_file_name).stem)
                 false_neg_test_info.append((Path(new_file_name).stem, neg_test_code))
                 test_change_map[neg_file] = new_file_name
             elif "Pos" in neg_file:

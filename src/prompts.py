@@ -34,9 +34,8 @@ you must correctly import them with fully qualified names or directly use them i
 Strictly import each symbol (class or annotation) individually instead of using "import *". 
 6. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly \
 must use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
-7. **Standardized Test Code**. Each test must have only one main public class, named as "AlertingTest{{i}}" or "NonAlertingTest{{j}}" where {{i}} \
-refers to the index of alerting tests and {{j}} for the non-alerting tests, both starting from 1. For each test, add clear and targeted comments \
-to highlight the specific checking scenario it covers. Never mention the test index in any comment.
+7. **Standardized Test Code**. Each test must include a main public class and clear comments, both to highlight the specific checking scenario it covers. \
+Test index is unrelevant and should not be mentioned in any comment or test code. 
 
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
@@ -78,9 +77,8 @@ you must correctly import them with fully qualified names or directly use them i
 Strictly import each symbol (class or annotation) individually instead of using "import *". 
 6. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
-7. **Standardized Test Code**. Each test only have one main public class, named as "AlertingTest{{i}}" where {{i}} refers to the index of \
-alerting tests, starting from 1. For each test, add clear and targeted comments to highlight the specific checking scenario it covers. \
-Never mention the test index in any comment.
+7. **Standardized Test Code**. Each test must include a main public class and clear comments, both to highlight the specific checking scenario it covers. \
+Test index is unrelevant and should not be mentioned in any comment or test code. 
 
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
@@ -120,9 +118,8 @@ you must correctly import them with fully qualified names or directly use them i
 Strictly import each symbol (class or annotation) individually instead of using "import *". 
 6. **Strict Class Usage**. For any class used in the test cases, ensure the methods or fields called are exactly defined in the class. Strictly must\
 use **"com.exp.AnotherClass"** if you need a different or arbitrary class, which can accept any method or field calls and not cause compilation errors.
-7. **Standardized Test Code**. Each test only have one main public class, named as "NonAlertingTest{{i}}" where {{i}} refers to the index of \
-non-alerting tests, starting from 1. For each test, add clear and targeted comments to highlight the specific checking scenario it covers. \
-Never mention the test index in any comment.
+7. **Standardized Test Code**. Each test must include a main public class and clear comments, both to highlight the specific checking scenario it covers. \
+Test index is unrelevant and should not be mentioned in any comment or test code. 
 
 ## Output Steps
 Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
@@ -149,8 +146,7 @@ Only when you strongly persist that the test has already satisfied the checking 
 1. **Trigger Checker Reporting**  
    - Analyze why the original test wasn't reported by comparing the DSL's violation patterns with test code
    - Make surgical changes ONLY where needed to match checker's detection logic
-2. **Preserve Core Identity**  
-   - Keep main class name identical (e.g., `AlertingTest1` remains unchanged)
+2. **Preserve Core Identity**
    - Retain existing imports and core logic flow
    - The modified test must still be a complete Java file that can compile successfully
    - Retain or refine comments to highlight the specific checking scenario for each test and never mention the test index in any comment
@@ -181,7 +177,6 @@ Only when you strongly persist that the test has already passed the checking log
    - Make surgical changes ONLY where needed to avoid matching checker's detection logic
    - Ensure modifications preserve the test's original valid behavior
 2. **Preserve Core Identity**  
-   - Maintain identical main class names (e.g., `NonAlertingTest1` unchanged)
    - Retain existing imports and primary logic flow
    - All modifications must yield compilable Java files
    - Retain or refine comments to highlight the specific checking scenario for each test and never mention the test index in any comment
@@ -256,27 +251,25 @@ PROMPTS[
 ## General Goal
 You are an expert in Java programming and code analysis. Your goal is to fix compilation errors in the given checker tests (Java code files).\
 These tests are designed to be reported (alerting) or passed (non-alerting) by a static code checker written in DSL format but fail to be compiled. \
-As inputs, I will provide you with a list of the checker tests, their mocked third-party library code as dependencies, and the error message. \
-When compiling the input tests with the provided library code, compilation errors with the error message will be raised. \
-You need to resolve these errors by modifying the test and the library code if necessary. 
+As inputs, I will provide you with a list of the failed checker tests, their mocked third-party library code as dependencies, and the error messages. \
+Every test fails when compiled with the provided library code, and you need to resolve these errors by refining the test code and the library code if necessary.
 
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Analyze the failure cause for each test and fix all compilation errors while ignoring warnings. Since the error \
 message maybe incomplete, you also need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems. \
 Never change the original comments unless breaking code changes are introduced.
 2. Never change the original alerting or non-alerting logic for each test. During fixing, you must ensure that the alerting tests \
-still contain checker-matching code patterns to guarantee reportability, while the non-alerting tests must not contain such patterns. \
-The checking scenario of a test can be inferred from both the original code comments and main class name (AlertingTest is designed to \
-be reported while NonAlertingTest is expected be non-alerting).
+still contain checker-matching code patterns to guarantee reportability, while the non-alerting tests must not contain such patterns. 
 3. Library Code Requirements. Each library code is just a mock code for test compilation with minimal logic. Always use minimum method bodies, default return \
 and field values (e.g., null, 0, false, '', etc.). Always using **Object** as argument/return/field types if possible to minimize nested dependencies. library code \
 fix should still follow these requirements.
 
-
 ### Input and Output Format
-For both input and output, each checker test is wrapped in "<java_file>" and "</java_file>" and each library code is wrapped in \
-"<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Output all the fixed tests (must in the same order with the same number as input) \
-and library code (each must still be a complete file with unchanged code) wrapped in the correct format. 
+- Each alerting Checker Test is wrapped in "<alerting_file>" and "</alerting_file>".
+- Each non-alerting Checker Test is wrapped in "<non_alerting_file>" and "</non_alerting_file>".
+- Each library code is wrapped in "<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>".
+Output all the fixed tests (must in the same order with the same count as input) and library code (only those that need to be fixed, each must still be complete) \
+with the correct wrapping format.
 
 ### Input
 - Checker test files:
@@ -304,27 +297,25 @@ PROMPTS[
 ## General Goal
 You are an expert in Java programming and code analysis. Your goal is to fix compilation errors in the given checker tests (Java code files).\
 These tests are designed to be reported (alerting) or passed (non-alerting) by a static code checker written in DSL format but all fail to be compiled. \
-As inputs, I will provide you with a list of the checker tests and the error message. When compiling these tests directly without dependencies, \
-compilation errors with the error message will be raised. You need to resolve these errors by refining the test code. 
+As inputs, I will provide you with a list of the failed checker tests and the error messages. Every test fails when directly compiled without dependencies, \
+and you need to resolve these errors by refining the test code.
 
 ### Madatory Guidelines for Fixing
 1. Fix Compilation Errors. Analyze the failure cause for each test and fix all compilation errors while ignoring warnings. Since the error \
 message maybe incomplete, you need to carefully analyze the inputs and fix any similar or potential compilation-failure-inducing problems. \
 Never change the original comments unless breaking code changes are introduced.
 2. Never change the original alerting or non-alerting logic for each test. During fixing, you must ensure that the alerting tests \
-still contain checker-matching code patterns to guarantee reportability, while the non-alerting tests must not contain such patterns. \
-The checking scenario of a test can be inferred from both the original code comments and main class name (AlertingTest is designed to \
-be reported while NonAlertingTest is expected be non-alerting).
+still contain checker-matching code patterns to guarantee reportability, while the non-alerting tests must not contain such patterns. 
 3. Library Code Requirements. If you add import statements or use third-party dependencies with fully qualified names, you must also provide mock library code \
 for them. Each mock library code is uesd for test compilation with minimal logic. Always use minimum method bodies, default return \
 and field values (e.g., null, 0, false, '', etc.). Always using **Object** as argument/return/field types if possible to minimize nested dependencies.
 
 
 ### Input and Output Format
-For both input and output, each Java code file is wrapped in "<java_file>" and "</java_file>". If you add any third-party dependencies as imports, \
-the library code should also be output, each wrapped in "<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". \
-Output all the fixed code files (must in the same order with the same number as input) and library code (if necessary, each must be a complete \
-file with lib code) wrapped in the correct format.
+For both input and output, each alerting test is wrapped in "<alerting_file>" and "</alerting_file>", while each non-alerting test is wrapped in \
+"<non_alerting_file>" and "</non_alerting_file>". If you add any third-party dependencies as imports, the library code should also be output, \
+each wrapped in "<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Output all the fixed tests (must in the same order with the same count as input) \
+and library code (if necessary, each must be a complete lib file) with the correct wrapping format.
 
 ### Input
 - Checker test files:
