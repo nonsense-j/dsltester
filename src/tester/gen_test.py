@@ -88,15 +88,10 @@ def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
     return res
 
 
-def extract_checker_tests(llm_output: str, gen_type: str) -> tuple[list[str], list[str]]:
+def extract_checker_tests(llm_output: str) -> tuple[list[str], list[str]]:
     """
     extract alerting and non-alerting test cases from the LLM output.
     """
-    assert gen_type in [
-        "all",
-        "alerting",
-        "non-alerting",
-    ], f"Invalid gen_test type: {gen_type}, should be one of ['all', 'alerting', 'non-alerting']"
     alert_pattern = r"<alerting_test>\s*(.*?)\s*</alerting_test>"
     alerting_test_list = re.findall(alert_pattern, llm_output, re.DOTALL)
     alerting_test_list = [test_case for test_case in alerting_test_list if test_case.strip() != ""]
@@ -163,7 +158,7 @@ def gen_checker_tests(
         llm_response = LLMWrapper.query_llm(user_prompt, system_prompt=sys_prompt, query_type=query_type)
         logger.debug(f"LLM TestGenerator result: \n{llm_response}")
         # parse the response
-        alerting_test_list, non_alerting_test_list = extract_checker_tests(llm_response, gen_type)
+        alerting_test_list, non_alerting_test_list = extract_checker_tests(llm_response)
         if gen_type in ["alerting", "all"] and len(alerting_test_list) == 0:
             logger.error(
                 f"--> [Detected LLM GenTest Failure] No Alerting test cases generated! Please check the LLM output."
@@ -182,7 +177,11 @@ def gen_checker_tests(
 
 
 def refine_checker_tests(
-    mismatch_test_list: list[str], checker_dsl: str, refine_type: str, retry_max_attempts: int = 1
+    mismatch_test_list: list[str],
+    checker_dsl: str,
+    refine_type: str,
+    add_info: bool = True,
+    retry_max_attempts: int = 1,
 ) -> list[str]:
     """
     Refine the generated test cases by checking the syntax and removing invalid ones.
@@ -197,9 +196,15 @@ def refine_checker_tests(
         "non-alerting": "refine_non_alerting_tests",
     }
     # construct the user prompt
+    additional_info = ""
+    if add_info:
+        additional_info_md = Path("src/resources/additional_info.md")
+        additional_info = additional_info_md.read_text(encoding="utf-8")
+
     test_wrapper = "alerting_test" if refine_type == "alerting" else "non_alerting_test"
     user_prompt = PROMPTS[prompt_map[refine_type]].format(
         checker_dsl=checker_dsl,
+        additional_info=additional_info,
         wrapped_tests="\n\n".join(
             [f"<{test_wrapper}>\n{test_code}\n</{test_wrapper}>" for test_code in mismatch_test_list]
         ),

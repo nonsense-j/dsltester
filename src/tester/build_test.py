@@ -324,15 +324,15 @@ class TestCompiler:
                     logger.info(f"LLM did not return lib code for {fqn_ori}, using existed {fqn_ori}.")
                     lib_res[fqn_ori] = lib_res_ori[fqn_ori]
 
-            pattern = r"<java_file>\s*(.*?)\s*</java_file>"
-            test_case_list = re.findall(pattern, llm_result, re.DOTALL)
-            test_case_list = [test_case for test_case in test_case_list if test_case.strip() != ""]
+            # the test code may be wrpped with <alerting_test> or <non_alerting_test>
+            pattern = r"<(alerting_test|non_alerting_test)>\s*(.*?)\s*</\1>"
+            # only retain the code as test cases in the LLM result
+            test_case_tuple_list = re.findall(pattern, llm_result, re.DOTALL)
+            test_case_list = [test_tuple[1] for test_tuple in test_case_tuple_list if test_tuple[1].strip() != ""]
             test_case_list = fix_syntax_error(test_case_list)
 
             if len(test_case_list) != len(error_map.keys()):
-                logger.warning(
-                    f"--> Output test count mismatches: {len(test_case_list)} != {len(self.test_abspath_list)}."
-                )
+                logger.warning(f"--> Output test count mismatches: {len(test_case_list)} != {len(error_map.keys())}.")
             else:
                 # replace the test cases with the fixed ones in full_test_case_list
                 for i, test_file in enumerate(failed_test_file_list):

@@ -135,4 +135,4 @@ def parse_xml_results(dsl_id, val_type: str = "all") -> dict[str, DslValResDict]
 if __name__ == "__main__":
     # Example usage
     dsl_id = "ONLINE_Use_Unsafe_Algorithm_IDEA"
-    parse_xml_results(dsl_id)
+    validate_tests(dsl_id, val_type="tmp")
