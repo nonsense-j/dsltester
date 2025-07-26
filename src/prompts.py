@@ -39,8 +39,8 @@ as "// (Alert / Not Alert): {{checking_scenario}}". Never mention test index in 
 {additional_info}
 
 # Output Steps
-Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
-you must strictly adhere to the Important Explanations of DSL Semantics in the Additional Information section.
+Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios including simple and complex ones. \
+During summarization, you must strictly adhere to the Important Explanations of DSL Semantics in the Additional Information section.
 Step 2. **Generate Tests**. Directly output each alerting test wrapped in "<alerting_test>" and "</alerting_test>", and each non-alerting test wrapped in \
 "<non_alerting_test>" and "</non_alerting_test>". Never use "```java".
 
@@ -82,8 +82,8 @@ as "// Alert: {{checking_scenario}}". Never mention test index in the test code 
 {additional_info}
 
 # Output Steps
-Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
-you must strictly adhere to the Important Explanations of DSL Semantics in the Additional Information section.
+Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios including simple and complex ones. \
+During summarization, you must strictly adhere to the Important Explanations of DSL Semantics in the Additional Information section.
 Step 2. **Generate Alerting Tests**. Directly output only alerting tests, each wrapped in "<alerting_test>" and "</alerting_test>". Never use "```java".
 
 # Your Task
@@ -123,8 +123,8 @@ as "// Not Alert: {{checking_scenario}}". Never mention test index in the test c
 {additional_info}
 
 # Output Steps
-Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios. During summarization, \
-you must strictly adhere to the Important Explanations of DSL Semantics in the Additional Information section.
+Step 1. **Analyze checker**. Summarize the semantics of the provided checker DSL and its comprehensive checking scenarios including simple and complex ones. \
+During summarization, you must strictly adhere to the Important Explanations of DSL Semantics in the Additional Information section.
 Step 2. **Generate Non-alerting Tests**. Directly output only non-alerting tests, each wrapped in "<non_alerting_test>" and "</non_alerting_test>". Never use "```java".
 
 # Your Task
@@ -270,8 +270,8 @@ and field values (e.g., null, 0, false, '', etc.). Always using **Object** as ar
 fix should still follow these requirements.
 
 # Input and Output Format
-- Each alerting Checker Test is wrapped in "<alerting_file>" and "</alerting_file>".
-- Each non-alerting Checker Test is wrapped in "<non_alerting_file>" and "</non_alerting_file>".
+- Each alerting Checker Test is wrapped in "<alerting_test>" and "</alerting_test>".
+- Each non-alerting Checker Test is wrapped in "<non_alerting_test>" and "</non_alerting_test>".
 - Each library code is wrapped in "<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>".
 Output all the fixed tests (must in the same order with the same count as input) and library code (only those that need to be fixed, each must still be complete) \
 with the correct wrapping format.
@@ -314,8 +314,8 @@ and field values (e.g., null, 0, false, '', etc.). Always using **Object** as ar
 
 
 # Input and Output Format
-For both input and output, each alerting test is wrapped in "<alerting_file>" and "</alerting_file>", while each non-alerting test is wrapped in \
-"<non_alerting_file>" and "</non_alerting_file>". If you add any third-party dependencies as imports, the library code should also be output, \
+For both input and output, each alerting test is wrapped in "<alerting_test>" and "</alerting_test>", while each non-alerting test is wrapped in \
+"<non_alerting_test>" and "</non_alerting_test>". If you add any third-party dependencies as imports, the library code should also be output, \
 each wrapped in "<lib-{{calss_fqn}}>" and "</lib-{{class_fqn}}>". Output all the fixed tests (must in the same order with the same count as input) \
 and library code (if necessary, each must be a complete lib file) with the correct wrapping format.
 

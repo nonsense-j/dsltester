@@ -278,7 +278,7 @@ class TestCompiler:
         full_error_msg = ""
         failed_test_file_list = sorted(error_map.keys())
         for test_file in failed_test_file_list:
-            test_wrapper = "alerting_file" if "PosTest" in test_file else "non_alerting_file"
+            test_wrapper = "alerting_test" if "PosTest" in test_file else "non_alerting_test"
             test_code = Path(test_file).read_text(encoding="utf-8")
             wrapped_java_code += f"<{test_wrapper}>\n{test_code}\n</{test_wrapper}>\n"
             full_error_msg += error_map[test_file] + "\n"

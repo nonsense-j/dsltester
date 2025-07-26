@@ -292,9 +292,9 @@ def main():
     Main function to run the Kirin DSL analysis.
     """
     # Load the dataset
-    dataset_path = Path("data/test/test_one.json")
+    dataset_path = Path("data/test/test_unit.json")
     with open(dataset_path, "r", encoding="utf-8") as f:
-        dsl_info_list: list[DslInfoDict] = json.load(f)[:20]
+        dsl_info_list: list[DslInfoDict] = json.load(f)[:30]
 
     res_path = dataset_path.parent / f"{dataset_path.stem}_result.json"
     final_result = []
