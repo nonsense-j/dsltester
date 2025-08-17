@@ -25,7 +25,9 @@ def validate_tests(dsl_id, val_type: str = "all") -> DslValResDict:
     lib_dir = Path(f"kirin_ws/{dsl_id}") / "lib"
     report_dir = cur_ws_dir / "report"
 
-    logger.info(f"==> Validating checker tests in {cur_ws_dir} in {val_type} mode...")
+    logger.info(
+        f"==> Validating checker tests in {cur_ws_dir} in {val_type} mode {'with' if lib_dir.is_dir() else 'without'} lib..."
+    )
     # execute kirin dsl (report dir will be automatically created in the test dir)
     if lib_dir.exists():
         KirinRunner.execute_kirin_dsl(dsl_dir, test_dir, report_dir, lib_dir)
@@ -133,4 +135,4 @@ def parse_xml_results(dsl_id, val_type: str = "all") -> dict[str, DslValResDict]
 if __name__ == "__main__":
     # Example usage
     dsl_id = "ONLINE_Use_Unsafe_Algorithm_IDEA"
-    parse_xml_results(dsl_id)
+    validate_tests(dsl_id, val_type="tmp")

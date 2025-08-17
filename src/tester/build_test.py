@@ -16,6 +16,7 @@ from src.mocker.mock_lib_ts import MockLibGenTS
 from src.utils._llm import LLMWrapper
 from src.tester.gen_test import fix_syntax_error
 from src.tester.edit_test import TestEditor
+from src.tester.manage_test import extract_main_class
 from src.utils._helper import create_dir_with_path, parse_lib_code
 
 
@@ -143,22 +144,43 @@ class TestCompiler:
             f"Compiling tests {'with' if self.mock_jar_file.is_file() else 'without '} mock lib for {self.test_dir}..."
         )
         create_dir_with_path(self.target_dir, cleanup=True)
+        compile_ws_dir = Path("kirin_ws/tmp/test")
+        create_dir_with_path(compile_ws_dir, cleanup=True)
+
+        # move all test files to kirin_ws/tmp/test, get the file mapping
+        compile_test_abspath_list = []
+        compile_ori_test_map = dict()
+        for test_abspath in self.test_abspath_list:
+            test_file = Path(test_abspath)
+            assert test_file.is_file(), f"--> Test file {test_file} does not exist!"
+            # create the target directory structure
+            compile_file_dir = compile_ws_dir / test_file.stem
+            compile_file_dir.mkdir(parents=True, exist_ok=True)
+            # write the test file to the target directory
+            test_code = test_file.read_text(encoding="utf-8")
+            test_main_class = extract_main_class(test_code)
+            compile_file_path = compile_file_dir / f"{test_main_class}.java"
+            compile_file_path.write_text(test_code, encoding="utf-8")
+            # update the compile test list and mapping
+            compile_file_path_str = str(compile_file_path.absolute().as_posix())
+            compile_test_abspath_list.append(compile_file_path_str)
+            compile_ori_test_map[compile_file_path_str] = test_abspath
 
         error_map = dict()
         # Use ThreadPoolExecutor for parallel compilation
-        max_workers = min(len(self.test_abspath_list), 8)  # Limit to 8 concurrent processes
-
+        max_workers = min(len(compile_test_abspath_list), 8)  # Limit to 8 concurrent processes
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all compilation tasks
             future_to_file = {
-                executor.submit(self._compile_single_file, test_abspath): test_abspath
-                for test_abspath in self.test_abspath_list
+                executor.submit(self._compile_single_file, compile_test_abspath): compile_test_abspath
+                for compile_test_abspath in compile_test_abspath_list
             }
 
             # Collect results
             for future in concurrent.futures.as_completed(future_to_file):
-                test_abspath, success, error_msg = future.result()
+                compile_test_abspath, success, error_msg = future.result()
                 if not success:
+                    test_abspath = compile_ori_test_map[compile_test_abspath]
                     error_map[test_abspath] = error_msg
 
         if not error_map:
@@ -174,6 +196,9 @@ class TestCompiler:
         # clean target directory if needed
         if clear_targets:
             shutil.rmtree(self.target_dir)
+
+        # clear the compile_ws_dir directory
+        shutil.rmtree(compile_ws_dir)
 
         status = len(error_map) == 0
         return status, error_map
@@ -253,8 +278,9 @@ class TestCompiler:
         full_error_msg = ""
         failed_test_file_list = sorted(error_map.keys())
         for test_file in failed_test_file_list:
+            test_wrapper = "alerting_test" if "PosTest" in test_file else "non_alerting_test"
             test_code = Path(test_file).read_text(encoding="utf-8")
-            wrapped_java_code += f"<java_file>\n{test_code}\n</java_file>\n"
+            wrapped_java_code += f"<{test_wrapper}>\n{test_code}\n</{test_wrapper}>\n"
             full_error_msg += error_map[test_file] + "\n"
         wrapped_java_code = wrapped_java_code.rstrip()
         full_error_msg = full_error_msg.rstrip()
@@ -298,15 +324,15 @@ class TestCompiler:
                     logger.info(f"LLM did not return lib code for {fqn_ori}, using existed {fqn_ori}.")
                     lib_res[fqn_ori] = lib_res_ori[fqn_ori]
 
-            pattern = r"<java_file>\s*(.*?)\s*</java_file>"
-            test_case_list = re.findall(pattern, llm_result, re.DOTALL)
-            test_case_list = [test_case for test_case in test_case_list if test_case.strip() != ""]
+            # the test code may be wrpped with <alerting_test> or <non_alerting_test>
+            pattern = r"<(alerting_test|non_alerting_test)>\s*(.*?)\s*</\1>"
+            # only retain the code as test cases in the LLM result
+            test_case_tuple_list = re.findall(pattern, llm_result, re.DOTALL)
+            test_case_list = [test_tuple[1] for test_tuple in test_case_tuple_list if test_tuple[1].strip() != ""]
             test_case_list = fix_syntax_error(test_case_list)
 
             if len(test_case_list) != len(error_map.keys()):
-                logger.warning(
-                    f"--> Output test count mismatches: {len(test_case_list)} != {len(self.test_abspath_list)}."
-                )
+                logger.warning(f"--> Output test count mismatches: {len(test_case_list)} != {len(error_map.keys())}.")
             else:
                 # replace the test cases with the fixed ones in full_test_case_list
                 for i, test_file in enumerate(failed_test_file_list):
