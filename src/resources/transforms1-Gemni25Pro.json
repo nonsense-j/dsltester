@@ -1,0 +1,82 @@
+{
+    "block": [
+        "add_redundant_scope: Wrap a sequence of statements in an extra, unnecessary pair of curly braces.",
+        "reorder_independent_statements: Swap the order of two adjacent statements that have no data or control dependencies on each other.",
+        "insert_unreachable_code: Add code after a terminal statement like 'return', 'break', or 'throw' to test dead code detection.",
+        "insert_dead_store: Add a variable assignment that is never read or used later in the block."
+    ],
+    "local_variable_declaration": [
+        "add_intermediate_variable: Decompose a complex expression by storing sub-expressions in new temporary variables.",
+        "separate_declaration_and_initialization: Split a declaration with an initializer (e.g., 'int x = 10;') into a declaration ('int x;') and a subsequent assignment ('x = 10;').",
+        "split_multiple_declarations: Convert a single-line declaration of multiple variables (e.g., 'int x, y;') into separate declarations for each variable.",
+        "merge_declarations: Combine two adjacent, independent variable declarations of the same type into a single declaration.",
+        "toggle_final_modifier: Add or remove the 'final' keyword. For local variables, this often has no semantic impact but can be treated differently by analyzers."
+    ],
+    "binary_expression": [
+        "apply_inverse_arithmetic_op: Replace an arithmetic operation with its inverse (e.g., 'a + b' becomes 'a - (-b)').",
+        "swap_relational_operator: Swap the operands and invert a relational operator (e.g., 'a > b' becomes 'b < a').",
+        "apply_de_morgans_law: Transform a boolean expression using De Morgan's laws (e.g., 'a && b' becomes '!(!a || !b)').",
+        "add_identity_element: Add the identity element to an expression (e.g., 'a + 0' or 'a * 1').",
+        "reorder_commutative_operands: Swap the operands of a commutative operator (e.g., 'a + b' becomes 'b + a')."
+    ],
+    "parenthesized_expression": [
+        "add_redundant_parentheses: Wrap an existing expression or sub-expression in another layer of parentheses.",
+        "remove_unnecessary_parentheses: Remove parentheses that are redundant due to operator precedence rules."
+    ],
+    "assignment_expression": [
+        "unpack_compound_assignment: Convert a compound assignment into its expanded form (e.g., 'x += 5' becomes 'x = x + 5').",
+        "pack_compound_assignment: Convert a simple assignment into its compound form (e.g., 'x = x + 5' becomes 'x += 5')."
+    ],
+    "if_statement": [
+        "invert_if_else_logic: Swap the 'if' and 'else' blocks and negate the condition (e.g., 'if (c) { A } else { B }' becomes 'if (!c) { B } else { A }').",
+        "add_empty_else_block: Add an empty 'else {}' block to an if statement that doesn't have one.",
+        "unpack_boolean_and_to_nested_if: Convert an 'if' with a logical AND condition into nested 'if' statements (e.g., 'if (a && b)' becomes 'if (a) { if (b) { ... } }').",
+        "unpack_boolean_or_to_if_else_if: Convert an 'if' with a logical OR into an if-else-if structure (e.g., 'if (a || b) { S }' becomes 'if (a) { S } else if (b) { S }').",
+        "merge_nested_if: Combine a nested 'if' statement into a single 'if' with a logical AND.",
+        "use_ternary_operator: Convert a simple if-else assignment into a ternary operation."
+    ],
+    "conditional_expression": [
+        "convert_ternary_to_if_else: Convert a ternary operator into a full if-else statement."
+    ],
+    "for_statement": [
+        "convert_for_to_while: Rewrite a standard 'for' loop as an equivalent 'while' loop.",
+        "move_for_initializer_out: Move the loop variable declaration outside of the 'for' loop's initializer section.",
+        "rephrase_for_update_expression: Change the loop variable update expression to an equivalent form (e.g., 'i++' to 'i += 1' or 'i = i + 1')."
+    ],
+    "while_statement": [
+        "convert_while_to_for: Rewrite a 'while' loop as an equivalent 'for' loop with empty initializer and update sections.",
+        "introduce_infinite_loop_with_break: Transform 'while (cond)' to 'while (true)' and add an 'if (!cond) { break; }' at the beginning of the loop body."
+    ],
+    "do_statement": [
+        "convert_do_while_to_while: Rewrite a 'do-while' loop by duplicating the loop body to execute once before a standard 'while' loop."
+    ],
+    "switch_expression": [
+        "convert_switch_to_if_else_if: Transform a switch statement into an equivalent chain of if-else-if statements.",
+        "reorder_case_blocks: Change the order of 'case' blocks that are each terminated by 'break', 'return', or 'throw'.",
+        "remove_case_fallthrough_by_duplication: If a case falls through, duplicate the code from the subsequent case to make the first case explicit and independent.",
+        "add_default_case: Add a 'default' case that does nothing or is unreachable if all cases are covered."
+    ],
+    "try_statement": [
+        "convert_try_with_resources_to_try_finally: Change a try-with-resources statement into a traditional try-finally block where the resource is explicitly closed.",
+        "merge_catch_blocks: For Java 7+, combine multiple 'catch' blocks for different exception types into a single block using the '|' operator.",
+        "split_multicatch_block: Split a multi-catch block into separate 'catch' blocks for each exception type."
+    ],
+    "method_invocation": [
+        "extract_argument_to_variable: Take a complex expression used as a method argument and assign it to a local variable before the call.",
+        "inline_variable_as_argument: If an argument is a variable that is used only once, replace the variable with its original expression."
+    ],
+    "lambda_expression": [
+        "convert_lambda_to_anonymous_class: Rewrite a lambda expression as an instance of an anonymous inner class.",
+        "convert_anonymous_class_to_lambda: Rewrite a simple anonymous inner class as a lambda expression."
+    ],
+    "field_declaration": [
+        "toggle_explicit_this: Add or remove 'this.' qualifier for member field access within instance methods."
+    ],
+    "integer_literal": [
+        "change_numeric_base: Change the base of a number (e.g., '10' becomes '0xA' or '0b1010').",
+        "add_numeric_separators: Add underscores to improve readability, which does not change the value (e.g., '1000000' becomes '1_000_000')."
+    ],
+    "string_literal": [
+        "rephrase_string_conversion: Change the method of converting an object or primitive to a String (e.g., '\"\" + myVar' to 'String.valueOf(myVar)')."
+    ]
+}

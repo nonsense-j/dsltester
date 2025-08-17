@@ -1,0 +1,424 @@
+{
+    "program": [
+        "reorder_independent_type_declarations: Reorder top-level type declarations that have no mutual static initialization dependencies.",
+        "merge_adjacent_imports_same_package: Combine multiple single-type imports from the same package into one on-demand import if no conflicts.",
+        "split_on_demand_imports: Replace a wildcard import with explicit imports for referenced types only.",
+        "remove_redundant_import: Delete imports from java.lang or same-package types."
+    ],
+    "import_declaration": [
+        "remove_duplicate_import: Remove an import if the same type is already imported.",
+        "canonicalize_static_import: Replace static on-demand import with explicit static member imports.",
+        "expand_wildcard_import: Replace a wildcard import with explicit imports for used types."
+    ],
+    "class_declaration": [
+        "add_redundant_public_modifier: Add explicit public modifier when already implicit (top-level).",
+        "add_redundant_static_for_nested: Add explicit static to implicitly static nested interfaces.",
+        "reorder_independent_fields: Reorder fields whose initializers have no side-effect or dependency.",
+        "reorder_independent_methods: Reorder methods without changing overload resolution or reflection assumptions.",
+        "introduce_private_constructor_for_utility: Add a private empty constructor to a utility class with only static members.",
+        "add_redundant_empty_static_initializer: Add an empty static block {}.",
+        "add_redundant_empty_instance_initializer: Add an empty instance initializer {}."
+    ],
+    "interface_declaration": [
+        "remove_redundant_modifiers: Remove implicit public abstract from methods and public static final from fields.",
+        "add_redundant_modifiers: Add explicit public abstract to methods or public static final to fields."
+    ],
+    "enum_declaration": [
+        "add_trailing_semicolon_after_constants: Add a semicolon if not present and no body follows.",
+        "reorder_enum_constants_no_reference: Reorder constants if no ordinal-sensitive logic or explicit ordinal use is present.",
+        "add_redundant_private_constructor: Add a private empty constructor."
+    ],
+    "annotation_type_declaration": [
+        "add_redundant_annotation_method_public: Add explicit public to annotation members."
+    ],
+    "field_declaration": [
+        "split_multi_variable_declaration: Split a declaration with multiple declarators into separate declarations.",
+        "merge_compatible_field_declarations: Merge adjacent fields with identical modifiers and type.",
+        "add_redundant_final: Add final to a field never reassigned (not volatile).",
+        "remove_redundant_final: Remove final from a private field not visible externally if not required (semantic for Java memory unchanged).",
+        "add_redundant_transient_if_not_serialized: Add transient to a field never serialized (test stubs).",
+        "reorder_independent_variable_initializers: Swap order of variables with constant or side-effect-free initializers.",
+        "replace_literal_with_constant_expression: Replace a literal initializer with an equivalent constant expression (e.g., 1+2).",
+        "fold_constant_expression: Replace a constant expression with its literal result.",
+        "add_redundant_parentheses_in_initializer: Wrap initializer in parentheses."
+    ],
+    "variable_declarator": [
+        "introduce_parenthesized_literal: Parenthesize literal or simple expression.",
+        "replace_with_equivalent_arithmetic_identity: Use expression +0, *1, /1, - -expr where safe (no overflow risk if compile-time constant).",
+        "replace_boolean_literal_with_double_negation: Replace true with !!true.",
+        "use_character_escape_equivalent: Replace a char literal with escaped form preserving value."
+    ],
+    "type_parameters": [
+        "reorder_independent_type_parameters: Reorder generic parameters if not referenced by bounds of each other."
+    ],
+    "method_declaration": [
+        "add_redundant_final_parameter_modifiers: Add final to parameters not reassigned.",
+        "remove_redundant_final_parameter_modifiers: Remove final from parameters.",
+        "add_redundant_public_to_interface_method: Add explicit public in interface.",
+        "reorder_independent_local_declarations: Reorder initial local declarations with no dependencies.",
+        "introduce_single_return_via_temp: Replace multiple tail returns with assignment to temp and single return.",
+        "inline_single_use_temp_before_return: Inline a temp variable used only in return expression.",
+        "add_redundant_empty_statement_before_return: Insert an empty statement ; before return.",
+        "wrap_body_in_redundant_block: Add an extra nested block around entire method body.",
+        "convert_return_boolean_expr_to_if: Replace 'return condition;' with if(condition) return true; else return false; and vice versa."
+    ],
+    "constructor_declaration": [
+        "inline_redundant_this_chain_one_arg: Inline trivial this(...) that only forwards constants (if possible).",
+        "add_redundant_empty_super_call: Add an explicit super(); if implicit and accessible."
+    ],
+    "block": [
+        "introduce_redundant_nested_block: Wrap a sequence of statements in an additional block.",
+        "flatten_single_nested_block: Remove a block whose only content is another block.",
+        "reorder_independent_statements: Swap adjacent statements with no data/control dependency and no side effects.",
+        "add_redundant_empty_statement: Insert ; between statements.",
+        "extract_subexpression_to_temp: Introduce a temporary variable for a pure sub-expression.",
+        "inline_single_use_temp: Inline a temp variable used exactly once."
+    ],
+    "labeled_statement": [
+        "remove_unused_label: Delete label not targeted by break/continue.",
+        "add_redundant_label: Introduce a label not referenced elsewhere."
+    ],
+    "expression_statement": [
+        "add_redundant_parentheses_around_expression: Parenthesize entire expression.",
+        "split_chained_assignment: Decompose a=b=c into c, then b=c, then a=b."
+    ],
+    "local_variable_declaration": [
+        "add_intermediate_variable: Decompose a complex expression by storing sub-expressions in new temporary variables.",
+        "introduce_redundant_cast_in_initializer: Add a cast that does not change type.",
+        "replace_literal_with_equivalent_expression: Replace literal with constant expression (e.g., 6 with 3*2).",
+        "merge_sequential_declarations_same_type: Merge adjacent declarations of same type.",
+        "split_declaration_and_initialization: Separate declaration from initialization if no definite assignment issues.",
+        "introduce_var_inference: Use var (Java 10+) where type is obvious.",
+        "expand_var_to_explicit_type: Replace var with explicit type.",
+        "add_redundant_final_modifier: Add final when variable not reassigned.",
+        "remove_redundant_final_modifier: Remove final if allowed."
+    ],
+    "if_statement": [
+        "add_redundant_braces: Add braces to single-statement branches.",
+        "remove_redundant_braces: Remove braces from single-statement branches.",
+        "invert_condition_with_branch_swap: Replace if(c) A else B with if(!c) B else A.",
+        "convert_to_ternary_in_assignment: Replace simple if-else assigning same variable with ternary.",
+        "merge_nested_if_same_condition: Combine sequential if with identical condition.",
+        "split_compound_condition_into_nested_if: Replace if(a&&b) with if(a){ if(b){...} }.",
+        "apply_de_morgan_and_negate: Replace if(!(a&&b)) with if(!a||!b).",
+        "collapse_else_if_using_switch: Transform chain into switch if on same variable and constants.",
+        "lift_return_out_of_if: Replace if(cond) return X; return Y; with return cond ? X : Y;.",
+        "add_redundant_else_after_return: Wrap remaining return in else branch.",
+        "replace_if_true_false_boolean_return: Replace if(cond) return true; return false; with return cond;."
+    ],
+    "while_statement": [
+        "convert_to_for_equivalent: Transform while(init; cond; update) into for loop form.",
+        "add_redundant_empty_block_before_body: Insert {}; before loop body (no effect).",
+        "add_redundant_parentheses_in_condition: Parenthesize condition multiple times."
+    ],
+    "do_statement": [
+        "convert_do_while_to_while_if_safe: If body ends without continue, refactor to while with pre-check.",
+        "wrap_body_in_redundant_block: Add extra block."
+    ],
+    "for_statement": [
+        "convert_to_while: Move initializer before loop and update to end of body.",
+        "split_multiple_initializers: Convert int a=0,b=1; into two separate declarations before loop.",
+        "split_multiple_updates: Move comma-separated updates into body end.",
+        "reorder_independent_initializers: Swap independent initializers.",
+        "reorder_independent_updates: Swap independent updates.",
+        "add_redundant_empty_block_between_updates_and_body: Insert an empty statement ;."
+    ],
+    "enhanced_for_statement": [
+        "convert_enhanced_for_to_index_loop: Replace for(T x: arr) with index-based loop.",
+        "convert_index_loop_to_enhanced_for: Replace simple index iteration with enhanced for.",
+        "add_redundant_block_wrapping_body: Extra block around body."
+    ],
+    "switch_statement": [
+        "reorder_case_labels_without_fallthrough: Reorder cases that end with break/return/throw.",
+        "merge_identical_case_bodies: Combine cases with same body using fallthrough.",
+        "split_case_labels: Separate combined labels into individual case statements.",
+        "add_redundant_break_after_control_transfer: Add break after return/throw (unreachable).",
+        "add_redundant_braces_in_case_block: Wrap case body in block.",
+        "replace_switch_with_if_else_chain: For small constant cases, convert to if-else chain."
+    ],
+    "switch_expression": [
+        "convert_arrow_case_to_block_with_yield: Replace 'case X -> expr' with 'case X -> { yield expr; }'.",
+        "merge_multiple_labels: Combine labels with comma syntax if bodies identical.",
+        "split_combined_labels: Expand combined labels into separate arms with same body."
+    ],
+    "return_statement": [
+        "replace_return_boolean_literal_with_expression: Replace return expr==true with return expr.",
+        "wrap_expression_in_parentheses: Parenthesize returned expression.",
+        "introduce_temp_for_return_expression: Assign expression to temp then return temp.",
+        "inline_single_use_temp_in_return: Replace return temp; with inline expression."
+    ],
+    "throw_statement": [
+        "wrap_expression_in_parentheses: Parenthesize thrown expression.",
+        "introduce_temp_for_throw_expression: Assign new exception to variable then throw the variable."
+    ],
+    "break_statement": [
+        "add_redundant_label_target: Use labeled break to labeled loop if label added."
+    ],
+    "continue_statement": [
+        "add_redundant_label_target: Use labeled continue for current loop label."
+    ],
+    "synchronized_statement": [
+        "extract_lock_expression_to_final_variable: Store lock expression in final local then synchronize on it.",
+        "add_redundant_empty_statement_before_block: Insert ; before synchronized block."
+    ],
+    "try_statement": [
+        "introduce_redundant_try_finally_noop: Wrap block in try-finally with empty finally.",
+        "merge_nested_try_with_same_handlers: Flatten nested try with identical catch clauses.",
+        "split_multi_catch_into_separate: Expand multi-catch into multiple catch blocks.",
+        "combine_identical_catches_into_multicatch: Merge catches whose bodies identical.",
+        "remove_redundant_finally_empty: Remove empty finally.",
+        "extract_resource_to_variable: Pre-declare resource then use try-with-resources on that variable.",
+        "inline_resource_declaration: Move variable into resource specification."
+    ],
+    "catch_clause": [
+        "add_redundant_parentheses_around_parameter: Parenthesize parameter name in assignment contexts (not allowed) - omit.",
+        "rename_catch_parameter_preserving_uniqueness: Change parameter name.",
+        "split_multi_catch_types: Replace (A|B e) with two catch clauses.",
+        "merge_catch_with_same_body: Combine into multi-catch."
+    ],
+    "finally_clause": [
+        "add_redundant_empty_statement: Insert ; inside finally."
+    ],
+    "assignment_expression": [
+        "expand_compound_assignment: Replace a+=b with a=a+b.",
+        "introduce_compound_assignment: Replace a=a+b with a+=b (type-safe).",
+        "replace_post_increment_with_explicit_add: a++ in statement context -> a += 1.",
+        "replace_pre_increment_with_add_assignment: ++a -> a += 1 where result used equivalently.",
+        "add_redundant_parentheses: Parenthesize left and/or right sides.",
+        "introduce_temp_for_rhs: Store rhs in temp then assign.",
+        "inline_temp_rhs_if_single_use: Inline previously extracted temp."
+    ],
+    "augmented_assignment_expression": [
+        "expand_to_simple_assignment: Replace compound with simple assignment.",
+        "replace_with_equivalent_bit_shift_identity: For x<<0 or x>>0 keep x."
+    ],
+    "unary_expression": [
+        "remove_redundant_plus: Replace +x with x.",
+        "apply_double_negation_boolean: Replace !!x with x.",
+        "apply_bitwise_double_complement_int: Replace ~~x with x.",
+        "negate_and_apply_arithmetic_identity: Replace -(-x) with x.",
+        "add_redundant_parentheses: Wrap operand."
+    ],
+    "binary_expression": [
+        "commute_commutative_operator: Swap operands for + * & | ^ && || when no side effects.",
+        "associate_re_grouping: Reassociate (a+b)+c to a+(b+c) for + * when safe from overflow only if compile-time constants same result.",
+        "apply_de_morgan: Replace !(a&&b) with !a||!b and vice versa.",
+        "replace_and_with_double_negated_or: a&&b -> !(!a||!b).",
+        "replace_or_with_double_negated_and: a||b -> !(!a&& !b).",
+        "replace_equality_with_negated_inequality: a==b -> !(a!=b).",
+        "replace_inequality_with_negated_equality: a!=b -> !(a==b).",
+        "add_redundant_parentheses_operands: Parenthesize operands.",
+        "replace_plus_zero: x+0 -> x for numeric types.",
+        "replace_times_one: x*1 -> x; 1*x -> x.",
+        "replace_divide_one: x/1 -> x.",
+        "replace_and_all_bits: x & -1 -> x (for int/long).",
+        "replace_or_zero: x|0 -> x.",
+        "replace_xor_zero: x^0 -> x.",
+        "replace_shift_zero: x<<0 -> x; x>>0 -> x; x>>>0 -> x.",
+        "replace_comparison_with_negated_inverse: a<b -> !(a>=b).",
+        "expand_ternary_like_boolean: a?true:false -> a; a?false:true -> !a."
+    ],
+    "conditional_expression": [
+        "simplify_ternary_boolean_true_false: condition?true:false -> condition.",
+        "simplify_ternary_boolean_false_true: condition?false:true -> !condition.",
+        "wrap_condition_in_parentheses: Parenthesize condition.",
+        "lift_common_subexpressions: Extract shared expressions from both branches into temp variable.",
+        "replace_nested_ternary_with_if: Convert nested ternary to if-else structure.",
+        "flatten_if_converted_to_ternary: Reverse of above."
+    ],
+    "parenthesized_expression": [
+        "remove_redundant_parentheses: Drop parentheses when precedence ensures same parsing.",
+        "add_nested_redundant_parentheses: Add extra parentheses around expression."
+    ],
+    "cast_expression": [
+        "add_redundant_cast_same_type: Cast expression to its own type.",
+        "remove_redundant_cast: Remove cast where implicit conversion exists.",
+        "wrap_target_expression_in_parentheses: Parenthesize inner expression."
+    ],
+    "instanceof_expression": [
+        "replace_with_negated_not_instanceof: a instanceof T -> !( !(a instanceof T) ) (double negation).",
+        "introduce_parenthesized_operand: Parenthesize left operand."
+    ],
+    "method_invocation": [
+        "add_redundant_this_qualifier: Prefix with this. for instance methods inside class.",
+        "remove_redundant_this_qualifier: Remove this. where not ambiguous.",
+        "qualify_static_call_with_class: Replace unqualified static call with ClassName.method().",
+        "remove_redundant_type_arguments: Use diamond or inference when possible.",
+        "add_explicit_type_arguments: Supply explicit type arguments matching inference.",
+        "introduce_temp_for_argument: Extract pure argument expression to variable.",
+        "inline_single_use_argument_temp: Inline previously extracted argument.",
+        "reorder_named_builder_chain_if_independent: Swap chain order if both produce same final state (safe only for known pure builders)."
+    ],
+    "field_access": [
+        "qualify_with_this_if_instance: Add this. prefix for fields.",
+        "remove_redundant_this_prefix: Remove this. when not shadowed.",
+        "qualify_static_field_with_class: Add ClassName. to static field.",
+        "replace_static_field_qualifier_instance: Use class qualifier instead of instance."
+    ],
+    "object_creation_expression": [
+        "add_redundant_parentheses_around_arguments: Parenthesize each argument.",
+        "introduce_temp_for_argument: Extract pure constructor argument.",
+        "inline_single_use_argument_temp: Inline temp.",
+        "use_diamond_operator: Replace explicit generic constructor args with <>.",
+        "expand_diamond_operator: Provide explicit generic type arguments."
+    ],
+    "array_creation_expression": [
+        "replace_with_equivalent_initialized_array: new int[]{1,2} -> new int[]{1,1+1}.",
+        "fold_constant_subexpressions_in_initializer: Simplify constant arithmetic in elements.",
+        "add_redundant_parentheses_dimensions: Parenthesize dimension expressions."
+    ],
+    "array_access": [
+        "introduce_temp_for_index: Extract index expression to temp.",
+        "inline_single_use_index_temp: Inline temp.",
+        "add_redundant_parentheses_index: Parenthesize index."
+    ],
+    "lambda_expression": [
+        "add_redundant_parentheses_single_parameter: Add parentheses around single parameter.",
+        "remove_redundant_parentheses_single_parameter: Remove parentheses.",
+        "add_redundant_block_body_return: Replace expression body with block returning expression.",
+        "simplify_block_body_to_expression: Replace block with single expression.",
+        "add_redundant_final_parameter: Add final to parameters.",
+        "infer_parameter_types_remove: Remove explicit parameter types if inferred.",
+        "add_explicit_parameter_types: Add explicit types."
+    ],
+    "annotation": [
+        "reorder_named_annotation_elements: Reorder elements with different names.",
+        "convert_single_element_to_value_name: @A(value=1) -> @A(1).",
+        "expand_value_shorthand: @A(1) -> @A(value=1).",
+        "reorder_array_initializer_elements_if_constant_set: Reorder if used as unordered set semantically (framework-specific caution)."
+    ],
+    "array_initializer": [
+        "reorder_elements_if_order_insensitive: Reorder elements when representing a mathematical set in test harness; only when consumer order-insensitive.",
+        "add_trailing_comma_last_element: Add trailing comma if allowed (not in Java; omit).",
+        "replace_literal_with_equivalent_expression: Replace element literal with constant expression."
+    ],
+    "literal": [
+        "change_numeric_literal_format: Replace 10 with 0xA or 12 with 1_2 (underscores).",
+        "add_underscores_in_numeric_literal: Insert underscores in legal positions.",
+        "normalize_boolean_literal_case: true -> true (no change, reserved).",
+        "convert_char_to_int_equivalent_in_context: 'A' replaced with 65 where implicit char to int.",
+        "convert_int_zero_to_hex: 0 -> 0x0."
+    ],
+    "string_literal": [
+        "concatenate_adjacent_literals: Replace \"ab\" with \"a\"+\"b\".",
+        "fold_concatenated_literals: Replace \"a\"+\"b\" with \"ab\".",
+        "escape_equivalent: Replace newline with \\n inside literal."
+    ],
+    "character_literal": [
+        "use_unicode_escape_equivalent: Replace 'A' with '\\u0041'.",
+        "use_octal_escape_equivalent: Replace char with octal escape if same value."
+    ],
+    "numeric_literal": [
+        "switch_between_decimal_hex_octal_binary: Replace value with equivalent representation.",
+        "insert_redundant_underscores: Add underscores in allowed positions."
+    ],
+    "boolean_literal": [
+        "replace_true_with_double_negation: true -> !!true.",
+        "replace_false_with_negated_true: false -> !true."
+    ],
+    "null_literal": [
+        "wrap_null_in_parentheses: (null)."
+    ],
+    "package_declaration": [
+        "add_redundant_parentheses_in_javadoc: Javadoc edit not affecting semantics (skip).",
+        "reorder_annotations_on_package: Reorder annotations if no ordering semantics."
+    ],
+    "modifier": [
+        "reorder_modifiers: Reorder modifiers into a different yet legal order.",
+        "add_redundant_public_in_interface_members: Add explicit public.",
+        "remove_redundant_public_in_interface_members: Remove implicit public."
+    ],
+    "annotation_argument_list": [
+        "reorder_named_arguments: Reorder pairs if names differ."
+    ],
+    "type_argument_list": [
+        "reorder_independent_type_arguments: Swap arguments if not mutually bounded."
+    ],
+    "type_identifier": [
+        "qualify_with_package: Replace simple name with fully qualified name if unambiguous.",
+        "remove_redundant_qualification: Remove package prefix when imported."
+    ],
+    "generic_type": [
+        "add_redundant_wildcard_extends_object: Add <? extends Object> where ?.",
+        "simplify_extends_object_wildcard: Replace <? extends Object> with ?."
+    ],
+    "array_type": [
+        "move_brackets_to_declarator: int[] a -> int a[].",
+        "normalize_brackets_position: int a[] -> int[] a."
+    ],
+    "instance_initializer": [
+        "introduce_redundant_empty_block: Add empty block inside initializer.",
+        "extract_expression_to_temp: Introduce temp for pure expression."
+    ],
+    "static_initializer": [
+        "add_redundant_empty_statement: Insert ; inside block."
+    ],
+    "qualified_identifier": [
+        "replace_with_import_and_simple_name: Import type and shorten.",
+        "fully_qualify_identifier: Replace simple name with full qualification."
+    ],
+    "this_expression": [
+        "parenthesize_this: (this).",
+        "assign_this_to_temp: var self=this; use self (Java 10 var) if allowed."
+    ],
+    "super_expression": [
+        "wrap_super_in_parentheses: (super)."
+    ],
+    "new_class_creator": [
+        "replace_anonymous_class_with_lambda_if_functional: Convert anonymous instance to lambda.",
+        "replace_lambda_with_anonymous_class: Reverse transformation."
+    ],
+    "lambda_body": [
+        "introduce_temp_before_return: Assign expression to temp; return temp.",
+        "inline_temp_in_return: Reverse."
+    ],
+    "method_reference": [
+        "convert_method_reference_to_lambda: obj::method -> x -> obj.method(x) (matching arity).",
+        "convert_lambda_to_method_reference: Replace simple forwarding lambda."
+    ],
+    "inferred_parameters": [
+        "add_explicit_parameter_types_in_lambda: Add explicit types.",
+        "remove_explicit_parameter_types_in_lambda: Remove when inferable."
+    ],
+    "ternary_chain": [
+        "refactor_to_if_else_chain: Replace nested ternaries.",
+        "flatten_if_else_to_ternary_chain: Reverse when each branch is expression."
+    ],
+    "bitwise_expression": [
+        "apply_idempotent_mask: (x & x) -> x.",
+        "apply_absorption: (x | (x & y)) -> x.",
+        "apply_distributive_form: x & (y | z) -> (x&y) | (x&z) if all pure."
+    ],
+    "logical_expression": [
+        "eliminate_duplicate_operand: (x && x) -> x; (x || x) -> x.",
+        "apply_absorption_laws: x || (x && y) -> x; x && (x || y) -> x.",
+        "apply_implication_identity: (!a || b) replace with a?b:true in boolean contexts."
+    ],
+    "comparison_expression": [
+        "swap_operands_with_operator_flip: a < b -> b > a.",
+        "negate_and_flip: !(a < b) -> a >= b.",
+        "replace_equals_with_objects_equals: a==b (reference types) -> Objects.equals(a,b) when safe for null-sensitivity tests."
+    ],
+    "string_concatenation": [
+        "replace_concatenation_with_format: a + b -> String.format(\"%s%s\", a, b) (semantic difference on null? keep only for non-null).",
+        "fold_constant_concatenation: Combine adjacent constant strings."
+    ],
+    "boxing_unboxing": [
+        "introduce_explicit_boxing: int x -> Integer.valueOf(x).",
+        "remove_redundant_boxing: Integer.valueOf(x) -> x where auto-boxing occurs.",
+        "introduce_explicit_unboxing: integerWrapper.intValue().",
+        "remove_redundant_unboxing_call: wrapper.intValue() in arithmetic -> wrapper."
+    ],
+    "optional_usage": [
+        "replace_isPresent_get_with_orElseThrow: if(opt.isPresent()) return opt.get(); -> return opt.orElseThrow();",
+        "replace_orElse_getWithTernary: opt.isPresent()?opt.get():fallback -> opt.orElse(fallback)."
+    ],
+    "collections_initialization": [
+        "replace_arrays_as_list_with_list_of: Arrays.asList(1,2) -> List.of(1,2) (immutable difference caution skip if mutability tested).",
+        "replace_list_of_with_arrays_as_list: Reverse when mutability not inspected."
+    ],
+    "numeric_operations": [
+        "replace_multiplication_power_of_two_with_shift: x*8 -> x<<3 for ints (no overflow difference if within range).",
+        "replace_division_power_of_two_with_shift: x/8 -> x>>3 for non-negative ints."
+    ]
+}

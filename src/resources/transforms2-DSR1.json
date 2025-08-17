@@ -1,0 +1,81 @@
+{
+    "local_variable_declaration": [
+        "split_multiple_declarations: Split a declaration with multiple variables into individual declarations (e.g., 'int a=1,b=2;' → 'int a=1; int b=2;').",
+        "fuse_declarations: Combine consecutive same-type declarations into a comma-separated list (e.g., 'int a; int b;' → 'int a, b;').",
+        "add_intermediate_variable: Decompose complex initializers using temporary variables (e.g., 'int x = a+b*c;' → 'int temp = b*c; int x = a+temp;').",
+        "hoist_initialization: Separate declaration and assignment (e.g., 'int x = 5;' → 'int x; x = 5;')."
+    ],
+    "method_declaration": [
+        "wrap_parameter: Add redundant Object-wrapping to parameters (e.g., 'void m(int p)' → 'void m(Integer p) { p = p.intValue(); ... }').",
+        "add_redundant_parameter: Introduce unused parameters with default values.",
+        "split_return: Decompose return expressions using local variables (e.g., 'return a+b;' → 'int tmp=a+b; return tmp;')."
+    ],
+    "if_statement": [
+        "negate_condition: Invert condition and swap branches (e.g., 'if(a)X else Y' → 'if(!a)Y else X').",
+        "introduce_intermediate: Store condition in temporary variable (e.g., 'if(a())...' → 'boolean tmp=a(); if(tmp)...').",
+        "convert_to_ternary: Replace simple if-returns with ternary expressions (e.g., 'if(cond)return a; else return b;' → 'return cond ? a : b;')."
+    ],
+    "binary_expression": [
+        "commutative_swap: Swap operands of commutative operations (e.g., 'a+b' → 'b+a').",
+        "associative_rebalance: Regroup associative operations (e.g., '(a+b)+c' → 'a+(b+c)').",
+        "distribute_operations: Apply distribution laws (e.g., 'a*(b+c)' → 'a*b + a*c').",
+        "constant_propagation: Replace with equivalent constants (e.g., 'x*1' → 'x')."
+    ],
+    "for_statement": [
+        "convert_to_while: Rewrite as while-loop (e.g., 'for(i=0;i<n;i++)...' → 'i=0; while(i<n)...; i++').",
+        "unroll_loop: Partially unroll small fixed iterations (e.g., 2-iteration loop).",
+        "fuse_loops: Combine consecutive same-bound loops.",
+        "split_loop: Separate compound loop bodies into nested loops."
+    ],
+    "try_statement": [
+        "add_redundant_nesting: Wrap in outer try-catch with no-op handling.",
+        "split_resources: Separate try-with-resources into individual try blocks.",
+        "convert_finally: Rewrite finally block as catch-all catch."
+    ],
+    "cast_expression": [
+        "add_redundant_cast: Insert safe nested casts (e.g., '(String)s' → '(String)(Object)s').",
+        "upcast_downcast: Add explicit upcast-downcast sequence (e.g., '(SubClass)obj' → '(SubClass)(SuperClass)obj')."
+    ],
+    "switch_expression": [
+        "reorder_cases: Swap independent case orders.",
+        "convert_to_if_chain: Rewrite as if-else statements.",
+        "merge_cases: Combine identical outcome cases."
+    ],
+    "assignment_expression": [
+        "split_compound: Decompose compound assignments (e.g., 'a += b' → 'a = a + b').",
+        "introduce_temp: Add temporary variable for RHS (e.g., 'a = b+c;' → 'int t=b+c; a=t;')."
+    ],
+    "array_initializer": [
+        "convert_to_loop: Replace with explicit index assignments (e.g., 'int[] a={1,2};' → 'int[] a=new int[2]; a[0]=1; a[1]=2;').",
+        "split_initialization: Separate declaration and initialization."
+    ],
+    "ternary_expression": [
+        "convert_to_if: Rewrite as if-else statement.",
+        "distribute_ternary: Apply distribution over operations (e.g., 'c ? a+b : a+d' → 'a + (c ? b : d)')."
+    ],
+    "unary_expression": [
+        "double_negation: Add/remove !! for booleans (e.g., '!a' → '!!(!a)').",
+        "arithmetic_identity: Apply identities (e.g., '-(-x)' → 'x')."
+    ],
+    "field_access": [
+        "add_this_qualifier: Insert explicit 'this' (e.g., 'field' → 'this.field').",
+        "remove_redundant_this: Eliminate qualifiers when unambiguous."
+    ],
+    "method_invocation": [
+        "add_redundant_cast: Wrap arguments in type casts.",
+        "reorder_independent_args: Swap order of pure-function arguments."
+    ],
+    "class_declaration": [
+        "add_redundant_modifiers: Insert vacuous 'final' modifiers.",
+        "split_class: Extract nested class to outer level."
+    ],
+    "block": [
+        "add_redundant_braces: Wrap single statements in blocks.",
+        "remove_extra_braces: Eliminate unnecessary block nesting.",
+        "reorder_independent_stmts: Swap order of side-effect-free statements."
+    ],
+    "lambda_expression": [
+        "convert_to_anon_class: Rewrite as anonymous class.",
+        "add_redundant_cast: Wrap parameters in type casts."
+    ]
+}

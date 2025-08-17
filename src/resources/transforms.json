@@ -1,0 +1,134 @@
+{
+    "local_variable_declaration": [
+        "add_intermediate_variable: Decompose a complex expression by storing sub-expressions in new temporary variables.",
+        "separate_declaration_and_initialization: Split a declaration with an initializer (e.g., 'int x = 10;') into a declaration ('int x;') and a subsequent assignment ('x = 10;').",
+        "merge_variable_declarations: Combine multiple variable declarations of the same type into a single declaration.",
+        "split_variable_declarations: Split multiple variable declarations into separate declaration statements.",
+        "change_variable_scope: Move variable declaration to different valid scope levels.",
+        "toggle_final_modifier: Add or remove the 'final' keyword. To add 'final', the variable should not be reassigned.",
+        "toggle_var_and_explicit_type: Switch between var declarations (Java 10+) and explicit type declarations if applicable."
+    ],
+    "assignment_expression": [
+        "decompose_compound_assignment: Convert compound assignments (+=, -=) to separate binary operation and assignment.",
+        "use_compound_assignment: Convert separate operation and assignment to compound assignment operators (+=, -=).",
+        "introduce_temporary_variable: Store right-hand side expression in temporary variable before assignment.",
+        "parenthesize_expression: Add or remove redundant parentheses in assignment expressions."
+    ],
+    "update_expression": [
+        "replace_post_increment_with_explicit_add: a++ in statement context -> a += 1.",
+        "replace_pre_increment_with_add_assignment: ++a -> a += 1 where result used equivalently."
+    ],
+    "current": [],
+    "binary_expression": [
+        "reorder_commutative_operands: Swap operands for commutative operators (+, *, &, |, ^, &&, ||).",
+        "distribute_operations: Apply distributive law to mathematical expressions.",
+        "factor_common_terms: Factor out common terms from expressions.",
+        "use_demorgan_laws: Apply De Morgan's laws to boolean expressions.",
+        "normalize_comparison_operators: Convert < to >= with negation, etc.",
+        "parenthesize_subexpressions: Add explicit parentheses to clarify operator precedence."
+    ],
+    "unary_expression": [
+        "double_negation: Apply double negation to boolean expressions.",
+        "convert_increment_decrement: Convert ++x to x += 1 or x = x + 1.",
+        "move_unary_operators: Move unary operators to different positions when semantically equivalent."
+    ],
+    "method_invocation": [
+        "extract_method_arguments: Store method arguments in temporary variables.",
+        "inline_method_arguments: Inline simple variable references as direct arguments.",
+        "reorder_independent_arguments: Reorder method arguments when they don't have side effects.",
+        "use_method_reference: Convert lambda expressions to method references where applicable.",
+        "expand_method_reference: Convert method references to equivalent lambda expressions."
+    ],
+    "if_statement": [
+        "invert_condition_and_branches: Negate condition and swap then/else branches.",
+        "convert_to_ternary: Transform simple if-else to ternary operator.",
+        "expand_ternary_to_if: Convert ternary operators to if-else statements.",
+        "merge_nested_conditions: Combine nested if statements using logical operators.",
+        "split_complex_conditions: Break complex conditions into nested if statements.",
+        "add_explicit_else: Add explicit else clause with empty block or return.",
+        "remove_redundant_else: Remove else clause after return/break/continue statements."
+    ],
+    "while_statement": [
+        "convert_to_for_loop: Transform while loop to equivalent for loop.",
+        "convert_to_do_while: Transform while to do-while with appropriate condition adjustment.",
+        "extract_loop_condition: Move complex loop conditions to separate boolean variables.",
+        "inline_loop_condition: Inline simple boolean variables into loop condition.",
+        "add_loop_invariants: Introduce loop invariant variables."
+    ],
+    "for_statement": [
+        "convert_to_while_loop: Transform for loop to equivalent while loop.",
+        "convert_to_enhanced_for: Transform traditional for to enhanced for when applicable.",
+        "expand_enhanced_for: Convert enhanced for to traditional for loop.",
+        "reorder_independent_updates: Reorder multiple update expressions in for loop.",
+        "extract_loop_variables: Move loop variable declarations outside the loop."
+    ],
+    "switch_expression": [
+        "convert_to_if_else_chain: Transform switch to equivalent if-else chain.",
+        "reorder_case_branches: Reorder case branches when they don't fall through.",
+        "merge_equivalent_cases: Combine cases with identical code blocks.",
+        "split_complex_cases: Separate complex case logic into multiple cases.",
+        "add_explicit_default: Add explicit default case with appropriate action.",
+        "use_switch_expressions: Convert switch statements to switch expressions where applicable."
+    ],
+    "try_statement": [
+        "split_try_blocks: Separate try block into multiple try-catch blocks.",
+        "merge_catch_blocks: Combine catch blocks with same exception handling.",
+        "reorder_catch_blocks: Reorder catch blocks while maintaining exception hierarchy.",
+        "extract_finally_logic: Move finally block logic to separate method calls.",
+        "use_try_with_resources: Convert manual resource management to try-with-resources."
+    ],
+    "lambda_expression": [
+        "convert_to_anonymous_class: Transform lambda to equivalent anonymous class.",
+        "expand_lambda_body: Convert expression lambda to block lambda.",
+        "compress_lambda_body: Convert block lambda to expression lambda when possible.",
+        "extract_lambda_variables: Capture lambda parameters in outer scope variables.",
+        "inline_lambda_parameters: Inline simple parameter usage within lambda body."
+    ],
+    "class_declaration": [
+        "reorder_class_members: Reorder methods, fields, and inner classes.",
+        "extract_inner_classes: Move inner classes to separate top-level classes.",
+        "inline_inner_classes: Convert top-level classes to inner classes where appropriate.",
+        "add_explicit_modifiers: Add explicit public, private, or package-private modifiers.",
+        "reorder_interface_implementations: Reorder implemented interfaces."
+    ],
+    "method_declaration": [
+        "reorder_method_parameters: Reorder parameters when calls can be updated consistently.",
+        "extract_method_body: Extract method body into separate helper methods.",
+        "inline_simple_methods: Inline simple getter/setter methods at call sites.",
+        "add_explicit_return_type: Make implicit return types explicit.",
+        "reorder_method_modifiers: Reorder method modifiers (public, static, final, etc.)."
+    ],
+    "field_declaration": [
+        "reorder_field_declarations: Reorder field declarations within class.",
+        "split_field_declarations: Split multiple field declarations into separate statements.",
+        "merge_field_declarations: Combine multiple fields of same type into single declaration.",
+        "extract_field_initializers: Move field initialization to constructor or initializer block.",
+        "inline_field_initializers: Move constructor initialization to field declaration."
+    ],
+    "array_access": [
+        "use_enhanced_for: Convert array access patterns to enhanced for loops.",
+        "extract_array_indices: Store array indices in temporary variables.",
+        "inline_array_indices: Inline simple index variables directly into array access."
+    ],
+    "cast_expression": [
+        "add_explicit_casts: Add explicit casts where implicit conversion occurs.",
+        "remove_redundant_casts: Remove casts that are not necessary.",
+        "use_instanceof_before_cast: Add instanceof checks before casting operations."
+    ],
+    "return_statement": [
+        "extract_return_expression: Store return expression in temporary variable.",
+        "inline_return_variable: Inline simple variable returns into direct expressions.",
+        "add_multiple_return_points: Split single return into multiple conditional returns.",
+        "consolidate_return_points: Combine multiple returns into single return with conditional expression."
+    ],
+    "synchronized_statement": [
+        "extract_synchronized_object: Store synchronization object in temporary variable.",
+        "expand_synchronized_methods: Convert synchronized methods to synchronized blocks.",
+        "reorder_independent_synchronized_blocks: Reorder synchronized blocks when they use different locks."
+    ],
+    "annotation": [
+        "reorder_annotation_parameters: Reorder named parameters in annotations.",
+        "use_annotation_defaults: Remove annotation parameters that match default values.",
+        "expand_annotation_shorthand: Convert single-value annotations to explicit parameter form."
+    ]
+}
