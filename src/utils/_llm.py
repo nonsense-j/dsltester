@@ -1,13 +1,12 @@
 import time
-from openai import OpenAI
-from openai.types.completion_usage import CompletionUsage
 from typing import Optional
+from litellm import completion, Usage
 
-from .config import OPENAI_BASE_URL, OPENAI_MODEL_NAME, OPENAI_API_KEY
+from .config import OPENAI_BASE_URL, OPENAI_MODEL_NAME, OPENAI_API_KEY, LLM_PROVIDER
 from ._logger import logger
 
 
-def query_llm_v1(messages: list, model_name: str = OPENAI_MODEL_NAME) -> tuple[str, Optional[CompletionUsage]]:
+def query_llm_v1(messages: list, model_name: str = OPENAI_MODEL_NAME) -> tuple[str, Optional[Usage]]:
     """
     Query LLM with openai API
     returns:
@@ -16,9 +15,20 @@ def query_llm_v1(messages: list, model_name: str = OPENAI_MODEL_NAME) -> tuple[s
     """
     assert model_name, f"Model name {model_name} not provided"
 
-    client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
-    chat_completion = client.chat.completions.create(model=model_name, messages=messages, temperature=0.1, stream=False)
+    chat_completion = completion(
+        base_url=OPENAI_BASE_URL,
+        api_key=OPENAI_API_KEY,
+        model=OPENAI_MODEL_NAME,
+        custom_llm_provider=LLM_PROVIDER,
+        messages=messages,
+        temperature=0.7,
+        stream=False,
+        num_retries=3,
+        retry_after=2,
+    )
     response = chat_completion.choices[0].message.content
+    if response is None:
+        response = chat_completion.choices[0].message.reasoning_content
 
     if "QWQ" in model_name or "Qwen" in model_name:
         # skip thinking
@@ -117,7 +127,7 @@ class LLMWrapper:
 
 if __name__ == "__main__":
     # Test the query_llm function
-    user_prompt = "How to mutate code to find bugs in SAST tools?"
+    user_prompt = "What is the capital of Japan?"
     response = LLMWrapper.query_llm(user_prompt)
     print(response)
     LLMWrapper.log_single_record()

@@ -15,10 +15,8 @@
         "parenthesize_expression: Add or remove redundant parentheses in assignment expressions."
     ],
     "update_expression": [
-        "replace_post_increment_with_explicit_add: a++ in statement context -> a += 1.",
-        "replace_pre_increment_with_add_assignment: ++a -> a += 1 where result used equivalently."
+        "expand_increment/decrement_operations: ++a/a++ in statement context -> a += 1; --a/a-- in statement context -> a -= 1."
     ],
-    "current": [],
     "binary_expression": [
         "reorder_commutative_operands: Swap operands for commutative operators (+, *, &, |, ^, &&, ||).",
         "distribute_operations: Apply distributive law to mathematical expressions.",
