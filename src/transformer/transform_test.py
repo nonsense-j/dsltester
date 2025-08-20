@@ -18,7 +18,7 @@ def transform_test(input_code: str) -> list[str]:
 if __name__ == "__main__":
     input_code = """\
 public class CustomException extends RuntimeException{
-    //TARGET_START
+    //TARGET_START (semantic: customValue is a final string)
     final String customValue;
     //TARGET_END
 }

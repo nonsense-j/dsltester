@@ -39,6 +39,25 @@ def analyze_third_pkg(dsl_text: str) -> list[str]:
     return list(analyzer.third_pkg_list)
 
 
+def analyze_keywords(dsl_text: str) -> tuple[set[str], set[str]]:
+    """
+    Analyze the DSL code to fetch all the nodes and attributes as keywords.
+    -> Node, BoolAttr, NodeAttr, NumAttr, StrAttr, CollectionNodeAttr
+    """
+    input_stream = InputStream(dsl_text)
+    lexer = HornLexer(input_stream)
+    tokens = lexer.getAllTokens()
+
+    # Nodes
+    node_type = getattr(lexer, "Node")
+    node_tokens = {token.text for token in tokens if token.type == node_type}
+
+    # Attributes
+    node_types = [getattr(lexer, attr) for attr in ["BoolAttr", "NodeAttr", "NumAttr", "StrAttr", "CollectionNodeAttr"]]
+    attr_tokens = {token.text for token in tokens if token.type in node_types}
+    return node_tokens, attr_tokens
+
+
 def get_dsl_hash(dsl_text: str) -> tuple[str, str]:
     """
     [NOT-USED] Get the hash of the DSL text
@@ -171,14 +190,19 @@ if __name__ == "__main__":
     # Test the parse_dsl function
     dsl_path = Path("kirin_ws/ONLINE_Use_Unsafe_Algorithm_IDEA/dsl/DSL_ORI.kirin")
     dsl_text = dsl_path.read_text(encoding="utf-8")
-    dsl_prep_res = preprocess_dsl(dsl_text, init_transform=True, spec_na_strategy=True, do_format=True)
+    # dsl_prep_res = preprocess_dsl(dsl_text, init_transform=True, spec_na_strategy=True, do_format=True)
 
-    result_str = "==> Preprocess Result:\n"
+    # result_str = "==> Preprocess Result:\n"
 
-    # for i, sub_dsl_list in enumerate(dsl_prep_res["sub_dsl_collection"]):
-    #     # fmt_sub_dsl_list = list(map(KirinRunner.format_dsl_text, sub_dsl_list))
-    #     result_str += f"--> Node {i + 1}:"
-    #     result_str += "\n" + f"\n{'-'*20}\n".join(sub_dsl_list)
-    # logger.info(result_str)
+    # # for i, sub_dsl_list in enumerate(dsl_prep_res["sub_dsl_collection"]):
+    # #     # fmt_sub_dsl_list = list(map(KirinRunner.format_dsl_text, sub_dsl_list))
+    # #     result_str += f"--> Node {i + 1}:"
+    # #     result_str += "\n" + f"\n{'-'*20}\n".join(sub_dsl_list)
+    # # logger.info(result_str)
 
-    save_dsl_prep_res(dsl_prep_res, dsl_path.parent)
+    # save_dsl_prep_res(dsl_prep_res, dsl_path.parent)
+
+    # show keywords
+    nodes, attrs = analyze_keywords(dsl_text)
+    logger.info(f"==> Nodes found in the DSL: {', '.join(nodes)}")
+    logger.info(f"==> Attributes found in the DSL: {', '.join(attrs)}")

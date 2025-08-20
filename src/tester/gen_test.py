@@ -1,10 +1,52 @@
-import re
+import re, json
 from pathlib import Path
 
 from src.prompts import PROMPTS, SYS_PROMPTS
 from src.utils._logger import logger
 from src.utils._llm import LLMWrapper
 from src.utils._helper import validate_syntax
+from src.tester.parse_dsl import analyze_keywords
+
+
+DSL_REFERENCES_TEMPLATE = """\
+**Basic Syntax:**
+- indexing: Indexing in DSL is 0-based, e.g., argumentIndex 0 refers to the first argument.
+- regex: Strings followed by "match" or "notMatch" in the DSL are regex patterns, which are strictly CASE-SENSITIVE by default. \
+They may also contain inline flags: "(?i)" means Case-insensitivity mode; (?s) means Dot-all mode; (?m) means multiline mode; (?x) means ignoring whitespace.
+**Node References:**
+{node_references}
+**Attribute References:**
+{attr_references}
+"""
+
+
+def retrieve_dsl_references(checker_dsl: str) -> str:
+    """
+    Retrieve additional context (node & attr info) for the given test code.
+    Args:
+        checker_dsl: The checker DSL code to retrieve context for.
+    Returns:
+        The retrieved context as a string.
+    """
+    node_set, attr_set = analyze_keywords(checker_dsl)
+
+    with open("src/resources/node_info.json", "r", encoding="utf-8") as fn:
+        node_info = json.load(fn)
+    with open("src/resources/attr_info.json", "r", encoding="utf-8") as fa:
+        attr_info = json.load(fa)
+
+    node_references = ""
+    for node in node_set:
+        node_references += f"{node}: {node_info[node]}\n"
+    attr_references = ""
+    for attr in attr_set:
+        attr_references += f"{attr}: {attr_info[attr]}\n"
+
+    dsl_references = DSL_REFERENCES_TEMPLATE.format(
+        node_references=node_references.rstrip(), attr_references=attr_references.rstrip()
+    )
+
+    return dsl_references
 
 
 def fix_syntax_error(test_list: list[str], max_attempts=1) -> list[str]:
@@ -110,7 +152,7 @@ def extract_checker_tests(llm_output: str) -> tuple[list[str], list[str]]:
 def gen_checker_tests(
     checker_dsl: str,
     gen_type: str = "all",
-    add_info: bool = True,
+    add_dsl_references: bool = True,
     retry_max_attempts: int = 1,
 ) -> tuple[list[str], list[str]]:
     """
@@ -118,7 +160,7 @@ def gen_checker_tests(
     Args:
         checker_dsl: The Checker DSL to generate tests for.
         gen_type: The type of tests to generate, can be "all", "alerting", or "non-alerting".
-        add_info: Whether to add additional information (node_properties) to the prompt.
+        add_dsl_references: Whether to add additional dsl references (node_properties) to the prompt.
         do_test_aug: Whether to augment tests while keeping existing tests.
         retry_max_attempts: The maximum number of attempts to retry if parsed nothing.
     Returns:
@@ -133,12 +175,8 @@ def gen_checker_tests(
     logger.info(f"==> Generating {gen_type} test cases")
 
     # construct the user prompt
-    additional_info = ""
-    if add_info:
-        additional_info_md = Path("src/resources/additional_info.md")
-        additional_info = additional_info_md.read_text(encoding="utf-8")
-
     sys_prompt = SYS_PROMPTS["gen_tests"]
+    dsl_references = retrieve_dsl_references(checker_dsl) if add_dsl_references else ""
     prompt_map = {
         "all": "gen_all_tests",
         "alerting": "gen_alerting_tests",
@@ -146,7 +184,7 @@ def gen_checker_tests(
     }
     query_type = prompt_map[gen_type]
     user_prompt = PROMPTS[query_type].format(
-        additional_info=additional_info,
+        dsl_references=dsl_references,
         checker_dsl=checker_dsl,
     )
 
@@ -180,7 +218,7 @@ def refine_checker_tests(
     mismatch_test_list: list[str],
     checker_dsl: str,
     refine_type: str,
-    add_info: bool = True,
+    add_dsl_references: bool = True,
     retry_max_attempts: int = 1,
 ) -> list[str]:
     """
@@ -196,15 +234,12 @@ def refine_checker_tests(
         "non-alerting": "refine_non_alerting_tests",
     }
     # construct the user prompt
-    additional_info = ""
-    if add_info:
-        additional_info_md = Path("src/resources/additional_info.md")
-        additional_info = additional_info_md.read_text(encoding="utf-8")
+    dsl_references = retrieve_dsl_references(checker_dsl) if add_dsl_references else ""
 
     test_wrapper = "alerting_test" if refine_type == "alerting" else "non_alerting_test"
     user_prompt = PROMPTS[prompt_map[refine_type]].format(
         checker_dsl=checker_dsl,
-        additional_info=additional_info,
+        dsl_references=dsl_references,
         wrapped_tests="\n\n".join(
             [f"<{test_wrapper}>\n{test_code}\n</{test_wrapper}>" for test_code in mismatch_test_list]
         ),
