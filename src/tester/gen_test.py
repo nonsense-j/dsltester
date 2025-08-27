@@ -7,11 +7,20 @@ from src.utils._llm import LLMWrapper
 from src.utils._helper import validate_syntax
 from src.tester.parse_dsl import analyze_keywords
 
+# global variables to hold dsl references
+NODE_REFERENCES = ""
+with open("src/resources/node_info.json", "r", encoding="utf-8") as fn:
+    NODE_REFERENCES = json.load(fn)
+
+ATTR_REFERENCES = ""
+with open("src/resources/attr_info.json", "r", encoding="utf-8") as fa:
+    ATTR_REFERENCES = json.load(fa)
 
 DSL_REFERENCES_TEMPLATE = """\
+###
 **Basic Syntax:**
-- indexing: Indexing in DSL is 0-based, e.g., argumentIndex 0 refers to the first argument.
-- regex: Strings followed by "match" or "notMatch" in the DSL are regex patterns, which are strictly CASE-SENSITIVE by default. \
+- Indexing in DSL is 0-based, e.g., argumentIndex 0 refers to the first argument.
+- Strings followed by "match" or "notMatch" in the DSL are regex patterns, which are strictly CASE-SENSITIVE by default. \
 They may also contain inline flags: "(?i)" means Case-insensitivity mode; (?s) means Dot-all mode; (?m) means multiline mode; (?x) means ignoring whitespace.
 **Node References:**
 {node_references}
@@ -29,23 +38,33 @@ def retrieve_dsl_references(checker_dsl: str) -> str:
         The retrieved context as a string.
     """
     node_set, attr_set = analyze_keywords(checker_dsl)
-
-    with open("src/resources/node_info.json", "r", encoding="utf-8") as fn:
-        node_info = json.load(fn)
-    with open("src/resources/attr_info.json", "r", encoding="utf-8") as fa:
-        attr_info = json.load(fa)
+    missed_nodes = []
+    missed_attrs = []
 
     node_references = ""
     for node in node_set:
-        node_references += f"{node}: {node_info[node]}\n"
+        if node in NODE_REFERENCES:
+            node_references += f"- {node}: {NODE_REFERENCES[node]}\n"
+        else:
+            missed_nodes.append(node)
+    node_references = node_references.rstrip()
+    if not node_references:
+        node_references = "None"
+
     attr_references = ""
     for attr in attr_set:
-        attr_references += f"{attr}: {attr_info[attr]}\n"
+        if attr in ATTR_REFERENCES:
+            attr_references += f"- {attr}: {ATTR_REFERENCES[attr]}\n"
+        else:
+            missed_attrs.append(attr)
+    attr_references = attr_references.rstrip()
+    if not attr_references:
+        attr_references = "None"
 
-    dsl_references = DSL_REFERENCES_TEMPLATE.format(
-        node_references=node_references.rstrip(), attr_references=attr_references.rstrip()
-    )
+    logger.info(f"Missed Nodes:{','.join(missed_nodes)}.")
+    logger.info(f"Missed Attributes:{','.join(missed_attrs)}.")
 
+    dsl_references = DSL_REFERENCES_TEMPLATE.format(node_references=node_references, attr_references=attr_references)
     return dsl_references
 
 
@@ -176,7 +195,7 @@ def gen_checker_tests(
 
     # construct the user prompt
     sys_prompt = SYS_PROMPTS["gen_tests"]
-    dsl_references = retrieve_dsl_references(checker_dsl) if add_dsl_references else ""
+    dsl_references = retrieve_dsl_references(checker_dsl) if add_dsl_references else "None"
     prompt_map = {
         "all": "gen_all_tests",
         "alerting": "gen_alerting_tests",
