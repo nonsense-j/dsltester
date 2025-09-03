@@ -350,40 +350,41 @@ PROMPTS[
     "transform_checker_test"
 ] = """\
 You are a creative and expert Java programmer specializing in code transformation to test static analysis tools. Given a Java code file and its \
-core semantics, your mission is to refactor the code in a way that preserves its original semantics with different implementations.
+core semantics, your mission is to refactor the code in various ways that preserve its original semantics with different implementations.
 
 ### The Golden Rule: Absolute Semantic Preservation
-The transformed code **must** be a perfect and clear semantic equivalent of the original. It must compile successfully and exhibit the exact \
-same runtime behavior, produce the identical output for all possible inputs. **This is the most important directive; there are no exceptions.**
+Each transformed code **must** be a perfect and clear semantic equivalent of the original. It must compile successfully and exhibit the exact \
+same runtime behavior for the core semantics,  producing the identical output for all possible inputs. **This is the most important directive; \
+there are no exceptions.**
 
 ### Guiding Principles for Transformation
 Instead of following a rigid list, use the following principles to inspire your transformations. You are encouraged to be inventive and combine \
 these ideas to create unique code variants that match best practices. Note that you are not restricted to these principles.
-- **Variable-level: Obfuscate Data Pathways and Representation:** Introduce layers of indirection between where data is defined and where it is used. \
-How could you wrap a variable or constant to make its access less direct? Consider wrapping constants/variables with intermediate \
-variables, method calls, field accesses, and even nested/anonymous/lambda classes.
-- **Statement-level: Vary Statement and Expression Granularity:** Think about the complexity of your statements. Can a single, complex expression be broken down into \
-a series of simpler steps using intermediate variables? Conversely, can a sequence of simple operations be fused into a single, more dense statement? \
-Play with the atomicity of the code.
-- **Structure-level: Reimagine Control Flow Logic:** Look at the program's execution path. Can you reconstruct the same logic using different control flow structures? \
-Explore alternative ways to write loops, conditional branches, and boolean comparisons that result in the exact same execution sequence.
-- **Feature-level: Leverage the Full Spectrum of Java's Syntax:** Java often provides multiple ways to achieve the same result. Utilize the language's rich feature set, \
-including its type system (e.g., primitives vs. wrapper classes), syntactic sugar, alternative annotations/libraries in best practice \
-(e.g., "final"->lombok.Value, "!null"-> "java.util.Object.nonnull"),  and new features from different Java versions (e.g., lambdas vs. anonymous classes, \
-modern switch expressions vs. traditional statements). 
-- **Inject Dead Code:** Add code that does not affect the program's behavior (e.g., extra variable assignments, unused method calls) to obfuscate the \
-original logic. You can also add duplicate code under unreachable conditions.
+- **Variable-level: Obfuscate Data Pathways and Representation.** For a literal or variable, introduce layers of indirection between its definition \
+and use. Wrap values with intermediate variables, method calls, or field accesses. Use nested, anonymous, or lambda classes to hide the data flow. \
+Alter the data's representation and change its scope between local and global to further obscure it.
+- **Expression-level: Refactor Expressions.** Refactor expressions to get the same result. This could involve adding parentheses, creating arithmetic-equivalent \
+expressions, breaking down complex expressions to simpler parts, or combining simple expressions into a more dense one.
+- **Statement-level: Invoke with wrapper.** Instead of directly executing the statement, consider wrapping it with an always-true branch using if/while/for/do-while. \
+To further obscure the original intent, you can also introduce additional layers of abstraction, such as helper methods or anonymous/lambda classes.
+- **Structure-level: Reimagine Control Flow Logic.** Look at the program's execution path. Can you reconstruct the same logic using different control flow structures? \
+Explore alternative ways to write loops, conditional branches (including the conditions) and others that result in the exact same execution sequence.
+- **Feature-level: Leverage the Full Spectrum of Java's Syntax.** Java often provides multiple ways to achieve the same result. Utilize the language's rich feature set, \
+including its type system (e.g., primitives vs. wrapper classes), syntactic sugar, alternative annotations/libraries in best practice (e.g., "final"->lombok.Value, \
+"!null"-> "java.util.Object.nonnull"),  and new features from different Java versions (e.g., lambdas vs. anonymous classes, var vs. explicit type). 
 
 ### General Constraints
 - **Only Transform Code:** The goal is syntactic diversity, not speed or efficiency, so avoid optimization and never add extra features. \
-You need to find alternative ways to achieve the same function as the code. d import statements for the extra methods and annotations used.
+You need to find alternative ways to achieve the same function as the code. Remember to import statements for the libraries and annotations used.
+- **Transform for Core Semantics:** Your transforms should change the code that relates to the core semantics and any code outside of this context \
+should not be modified.
 
 ### Your Task
 You will be given a Java program and its core semantics. Your task is to apply your creative, semantic-preserving transformations **only to the code related \
-to the core semantics**. Focus on transforming the core semantics and any code outside of this context should not be modified. 
-Respond with all the complete, modified Java programs after applying various reasonable transformations.
+to the core semantics**. Respond with all the complete, modified Java programs after applying various reasonable transformations.
 - Seed Program
 {seed_program}
 - Core Semantics
 {core_semantics}
+- Transformed Programs
 """
