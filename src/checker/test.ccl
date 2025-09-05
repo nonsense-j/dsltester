@@ -1,0 +1,22 @@
+AND {
+  ('The file is a Java source file'),
+  ('The class instance expression is a bad closeable initialization'),
+  ('The class instance expression type matches the variable type'),
+  EXISTS ('ancestor type of the reference type') {
+    OR {
+      ('The ancestor is java.io.Reader or java.io.InputStream'),
+      ('The ancestor is java.util.zip.ZipFile')
+    }
+  },
+  NOT {
+    EXISTS ('ancestor type in the derivation') {
+      OR {
+        ('The ancestor is java.io.CharArrayReader, java.io.StringReader, or java.io.ByteArrayInputStream'),
+        ('The ancestor is StringInputStream')
+      }
+    }
+  },
+  NOT {
+    ('The class instance expression does not need to be closed')
+  }
+}

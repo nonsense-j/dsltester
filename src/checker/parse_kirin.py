@@ -4,7 +4,7 @@
 
 from pathlib import Path
 
-from src.utils._antlr import *
+from checker.antlr_kirin import *
 from src.utils.types import *
 from src.utils._kirin import KirinRunner
 from src.utils._helper import create_dir_with_path
@@ -187,7 +187,7 @@ def save_dsl_prep_res(dsl_prep_res: DslPrepResDict, dsl_dir: Path, is_opposite: 
 
 
 if __name__ == "__main__":
-    # Test the parse_dsl function
+    # Test the parse_kirin function
     dsl_path = Path("kirin_ws/ONLINE_Use_Unsafe_Algorithm_IDEA/dsl/DSL_ORI.kirin")
     dsl_text = dsl_path.read_text(encoding="utf-8")
     # dsl_prep_res = preprocess_dsl(dsl_text, init_transform=True, spec_na_strategy=True, do_format=True)

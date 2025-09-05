@@ -5,7 +5,7 @@ from src.prompts import PROMPTS, SYS_PROMPTS
 from src.utils._logger import logger
 from src.utils._llm import LLMWrapper
 from src.utils._helper import validate_syntax
-from src.tester.parse_dsl import analyze_keywords
+from src.checker.parse_kirin import analyze_keywords
 
 # global variables to hold dsl references
 NODE_REFERENCES = ""

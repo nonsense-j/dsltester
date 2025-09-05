@@ -14,3 +14,6 @@ OPENAI_MODEL_NAME = "xxxxx"
 # api keys in env
 load_dotenv("src/.env", override=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# spec_not_and strategy
+SPEC_NOT_AND = True

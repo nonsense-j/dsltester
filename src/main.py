@@ -4,7 +4,7 @@ from pathlib import Path
 from src.tester.build_test import TestCompiler
 from src.tester.manage_test import TestManager
 from src.tester.validate_test import validate_tests
-from src.tester.parse_dsl import preprocess_dsl, save_dsl_prep_res
+from src.checker.parse_kirin import preprocess_dsl, save_dsl_prep_res
 
 from src.utils._llm import LLMWrapper
 from src.utils.types import DslInfoDict, TestInfoDict

@@ -11,12 +11,12 @@ Parser Rules
 // The entry point of the grammar. A complete check must be a single condition.
 check: condition EOF;
 
-// A condition can be any of the logical expressions or a simple atomic one.
-// We also allow parentheses for explicit grouping and precedence.
+// A condition can be an atomic condition (which is now wrapped in parens),
+// a logical expression, or any condition explicitly grouped with parens for precedence.
 condition
     : logicalExpr
-    | LPAREN condition RPAREN
     | atomicCondition
+    | LPAREN condition RPAREN
     ;
 
 // Groups all the complex logical structures.
@@ -35,13 +35,13 @@ andExpr: AND LBRACE conditionList RBRACE;
 orExpr: OR LBRACE conditionList RBRACE;
 
 // Matches a 'NOT' expression with a single nested condition.
-notExpr: NOT LBRACE LPAREN condition RPAREN RBRACE;
+notExpr: NOT LBRACE condition RBRACE;
 
-// Matches an 'EXIST' quantifier with a single-quoted description and a single condition.
-existsExpr: EXIST LPAREN DESCRIPTION RPAREN LBRACE LPAREN condition RPAREN RBRACE;
+// Matches an 'EXISTS' quantifier with a single-quoted description and a single condition.
+existsExpr: EXISTS LPAREN DESCRIPTION RPAREN LBRACE condition RBRACE;
 
 // Matches a 'FORALL' quantifier with a single-quoted description and a single condition.
-forallExpr: FORALL LPAREN DESCRIPTION RPAREN LBRACE LPAREN condition RPAREN RBRACE;
+forallExpr: FORALL LPAREN DESCRIPTION RPAREN LBRACE condition RBRACE;
 
 /*
 --------------------------------------------------------------------------------
@@ -50,12 +50,11 @@ Helper Parser Rules
 --------------------------------------------------------------------------------
 */
 
-// Defines a list of one or more parenthesized conditions, separated by commas.
-// Example: (cond1), (cond2)
-conditionList: LPAREN condition RPAREN (COMMA LPAREN condition RPAREN)*;
+// Defines a list of one or more conditions, separated by commas.
+conditionList: condition (COMMA condition)*;
 
-// An atomic condition is simply represented by the DESCRIPTION token.
-atomicCondition: DESCRIPTION;
+// An atomic condition is defined as a description wrapped in parentheses.
+atomicCondition: LPAREN DESCRIPTION RPAREN;
 
 
 /*
@@ -70,7 +69,7 @@ Lexer Rules (Tokens)
 AND:    'AND';
 OR:     'OR';
 NOT:    'NOT';
-EXIST:  'EXIST';
+EXISTS:  'EXISTS';
 FORALL: 'FORALL';
 
 // Symbols
@@ -89,7 +88,7 @@ DESCRIPTION
 
 // This is a helper rule for the lexer and does not create a token on its own.
 // It makes the DESCRIPTION rule cleaner.
-fragment SQUOTE: '\''; 
+fragment SQUOTE: '\'';
 
 // This rule tells the lexer to ignore whitespace (spaces, tabs, newlines).
 WS: [ \t\r\n]+ -> skip;
