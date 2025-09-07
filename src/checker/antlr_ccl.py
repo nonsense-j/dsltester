@@ -110,7 +110,7 @@ class DslConverterVisitor(CodeCheckVisitor):
 
     def visitCondition(self, ctx: CodeCheckParser.ConditionContext):
         if ctx.getChildCount() == 3 and ctx.LPAREN():
-            return self.visit(ctx.condition(0))
+            return self.visit(ctx.condition())
         return self.visitChildren(ctx)
 
 
@@ -238,7 +238,7 @@ NOT {
     """
 AND {
     ( 'The application context is successfully loaded' ),
-    FORALL ('controller bean') {
+    ( FORALL ('controller bean') {
         OR {
             ( 'The bean name is "healthCheckController"' ),
             EXISTS ('method with "RequestMapping" annotation') {
@@ -248,8 +248,8 @@ AND {
                 }
             }
         }
-    },
-    NOT { ( 'The database connection pool is exhausted' ) }
+    } ),
+    ( NOT { ( 'The database connection pool is exhausted' ) } )
 }
 """,
 ]

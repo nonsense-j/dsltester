@@ -5,14 +5,17 @@
 from nltk.sem import logic
 from src.checker.antlr_ccl import dsl_to_logic_expr, logic_expr_to_dsl
 from src.utils.config import SPEC_NEG_AND_STRATEGY
+from src.utils._logger import logger
 
 
 def decompose_checker_dsl(checker_dsl: str) -> list[str]:
     """Decompose a checker's DSL (ccl) by modelling as a logical expr"""
     logic_expr, symbol_map = dsl_to_logic_expr(checker_dsl)
+    logger.info(f"Logic Expression: \n{logic_expr}")
     nnf_expr = to_nnf(logic_expr)
     distributed_expr = distribute(nnf_expr)
     decomposed_expr_list = split_by_or(distributed_expr)
+    logger.info(f"Decomposed Logic Expressions: \n{decomposed_expr_list}")
     return [logic_expr_to_dsl(piece, symbol_map) for piece in decomposed_expr_list]
 
 
@@ -83,9 +86,11 @@ def split_by_or(expr: logic.Expression) -> list[logic.Expression]:
     """Splits an expression by the top-level OR operator."""
     if isinstance(expr, logic.ExistsExpression):
         return [logic.ExistsExpression(expr.variable, term) for term in split_by_or(expr.term)]
-    if isinstance(expr, logic.OrExpression):
+    if isinstance(expr, logic.AllExpression):
+        return [logic.AllExpression(expr.variable, term) for term in split_by_or(expr.term)]
+    elif isinstance(expr, logic.OrExpression):
         return split_by_or(expr.first) + split_by_or(expr.second)
-    if isinstance(expr, logic.AndExpression):
+    elif isinstance(expr, logic.AndExpression):
         return [
             logic.AndExpression(first, second)
             for first in split_by_or(expr.first)
@@ -96,8 +101,8 @@ def split_by_or(expr: logic.Expression) -> list[logic.Expression]:
 
 
 if __name__ == "__main__":
-    # expression_string = "exists x. (F1(x) & (F2(x) | F3(x)))"
-    # # expression_string = "P & (Q & (T1 | T2))"
+    # expression_string = "-(all x. (F1(x) & (F2(x) | F3(x))))"
+    # # # expression_string = "P & (Q & (T1 | T2))"
 
     # # 1. Parse the string
     # logic_parser = logic.LogicParser()
@@ -106,6 +111,7 @@ if __name__ == "__main__":
 
     # # 2. Convert to NNF (doesn't change this specific expression, but is good practice)
     # nnf_expr = to_nnf(original_expr)
+    # print(f"After NNF Conversion:\n  {nnf_expr}\n")
 
     # # 3. STEP 2 (NEW): Distribute AND over OR
     # distributed_expr = distribute(nnf_expr)
@@ -139,29 +145,46 @@ if __name__ == "__main__":
     #         }
     #     }
     # }"""
-    checker_dsl = """AND {
-  ('The file is a Java source file'),
-  ('The class instance expression is a bad closeable initialization'),
-  ('The class instance expression type matches the variable type'),
-  EXISTS ('ancestor type of the reference type') {
-    OR {
-      ('The ancestor is java.io.Reader or java.io.InputStream'),
-      ('The ancestor is java.util.zip.ZipFile')
+    #     checker_dsl = """AND {
+    #   ('The file containing the ClassInstanceExpr is a Java source file'),
+    #   ('The ClassInstanceExpr represents a bad closeable initialization'),
+    #   ('The type of the ClassInstanceExpr matches the RefType t'),
+    #   EXISTS ('ancestor type of RefType t') {
+    #     OR {
+    #       ('The ancestor type has qualified name "java.io.Reader"'),
+    #       ('The ancestor type has qualified name "java.io.InputStream"'),
+    #       ('The ancestor type has qualified name "java.util.zip.ZipFile"')
+    #     }
+    #   },
+    #   NOT {
+    #     EXISTS ('safe ancestor type of type in derivation of ClassInstanceExpr') {
+    #       OR {
+    #         ('The ancestor type has qualified name "java.io.CharArrayReader"'),
+    #         ('The ancestor type has qualified name "java.io.StringReader"'),
+    #         ('The ancestor type has qualified name "java.io.ByteArrayInputStream"'),
+    #         ('The ancestor type has name "StringInputStream"')
+    #       }
+    #     }
+    #   },
+    #   NOT {
+    #     ('The ClassInstanceExpr does not need to be closed')
+    #   }
+    # }"""
+    checker_dsl = """EXISTS ('ASTVariableAccess or ASTFieldAccess node') {
+    AND {
+        ('The node is inside a constructor (ancestors include ASTConstructorDeclaration)'),
+        ('The access type of the node is WRITE'),
+        EXISTS ('referenced symbol of the node') {
+            AND {
+                ('The referenced symbol is a field'),
+                ('The field is static'),
+                ('The field is not final')
+            }
+        }
     }
-  },
-  NOT {
-    EXISTS ('ancestor type in the derivation') {
-      OR {
-        ('The ancestor is java.io.CharArrayReader, java.io.StringReader, or java.io.ByteArrayInputStream'),
-        ('The ancestor is StringInputStream')
-      }
-    }
-  },
-  NOT {
-    ('The class instance expression does not need to be closed')
-  }
-}"""
+}
+"""
     decomposed = decompose_checker_dsl(checker_dsl)
-    print("Decomposed Checker DSL (CCL):")
+    logger.info("Decomposed Checker DSL (CCL):")
     for i, piece in enumerate(decomposed):
-        print(f"=> Piece {i+1}: {piece}")
+        logger.info(f"=> Piece {i+1}: {piece}")

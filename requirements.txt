@@ -4,6 +4,7 @@ tree_sitter
 tree-sitter-java
 dotenv
 litellm
+nltk
 
 # jupyter notebook
 tqdm
